@@ -25,45 +25,81 @@
     return loaded[url];
   }
 
+  // Nối chữ trong ô: phần trước kết thúc bằng "-" (mã hàng bị xuống dòng "NE50-" + "MHO-35-36") thì nối liền
+  const joinText = (a, b) => (a ? a + (/-$/.test(a) ? "" : " ") + b : b);
+
   const median = (arr) => {
     if (!arr.length) return 0;
     const s = [...arr].sort((a, b) => a - b);
     return s[Math.floor(s.length / 2)];
   };
 
+  const UNITS = ["Đôi", "Cái", "Chiếc", "Hộp", "Gói", "Chai", "Lon", "Thùng", "Túi", "Kg", "Bộ", "Lốc", "Bao", "Cây", "Hũ", "Lọ", "Tuýp", "Vỉ", "Viên", "Ống", "Can", "Két", "Cuộn", "Tờ", "Quyển", "Cuốn", "Mét", "Lít", "Bịch", "Bình", "Chục", "Cặp", "Tấm", "Sợi", "Bó", "Khay", "Hộc", "Xấp"];
+
   // =====================================================================
   // Dựng bảng từ các "từ" có toạ độ: {text, x0, x1, y0, y1, conf}
   // y đã cộng dồn theo trang nên nhiều trang nối liền nhau.
-  // vlines: toạ độ x các đường kẻ dọc của bảng (nếu ảnh có kẻ ô) -> dùng làm ranh giới cột
+  // vlines: toạ độ x các đường kẻ dọc của bảng (nếu có kẻ ô) -> ranh giới cột
+  // hlines: toạ độ y các đường kẻ ngang (nếu có) -> ranh giới dòng, để ô chữ xuống 2-3 dòng vẫn là 1 ô
   // =====================================================================
-  function buildTable(words, headerScore, vlines) {
+  function buildTable(words, headerScore, vlines, hlines) {
     words = words.filter((w) => w.text && w.text.trim());
     if (!words.length) return { grid: [], conf: [] };
     const h = median(words.map((w) => w.y1 - w.y0)) || 10;
+    const ycOf = (w) => (w.y0 + w.y1) / 2;
 
     // 1) Gom từ thành dòng theo toạ độ dọc
-    const sorted = [...words].sort((a, b) => (a.y0 + a.y1) - (b.y0 + b.y1));
-    const lines = [];
-    for (const w of sorted) {
-      const yc = (w.y0 + w.y1) / 2;
-      const cur = lines[lines.length - 1];
-      if (cur && Math.abs(yc - cur.yc) < h * 0.55) {
-        cur.words.push(w);
-        cur.yc = cur.words.reduce((s, x) => s + (x.y0 + x.y1) / 2, 0) / cur.words.length;
-      } else lines.push({ yc, words: [w] });
+    const groupLines = (ws) => {
+      const out = [];
+      for (const w of [...ws].sort((a, b) => ycOf(a) - ycOf(b))) {
+        const cur = out[out.length - 1];
+        if (cur && Math.abs(ycOf(w) - cur.yc) < h * 0.55) {
+          cur.words.push(w);
+          cur.yc = cur.words.reduce((s, x) => s + ycOf(x), 0) / cur.words.length;
+        } else out.push({ yc: ycOf(w), words: [w] });
+      }
+      for (const l of out) l.words.sort((a, b) => a.x0 - b.x0);
+      return out;
+    };
+    // Mỗi "dòng bảng" có thể gồm nhiều dòng chữ (sub). Có đường kẻ ngang thì 1 dòng bảng = 1 dải giữa 2 đường kẻ.
+    let lines;
+    const hs = (hlines || []).slice().sort((a, b) => a - b).filter((y, i, arr) => i === 0 || y - arr[i - 1] > h * 0.6);
+    if (hs.length >= 3) {
+      const bands = [];
+      for (let i = 0; i < hs.length - 1; i++) if (hs[i + 1] - hs[i] > h * 0.8) bands.push([hs[i], hs[i + 1]]);
+      const inBand = bands.map(() => []), outside = [];
+      for (const w of words) {
+        const y = ycOf(w);
+        const b = bands.findIndex(([a, z]) => y > a && y < z);
+        (b >= 0 ? inBand[b] : outside).push(w);
+      }
+      // Dải quá cao (nhiều dòng hàng không kẻ ngăn giữa) thì không coi là 1 dòng bảng: chia theo dòng chữ như thường
+      const tall = bands.map(([a, z]) => z - a > h * 7);
+      lines = [
+        ...groupLines(outside).map((l) => ({ yc: l.yc, sub: [l.words] })),
+        ...bands.flatMap(([a, z], i) => tall[i]
+          ? groupLines(inBand[i]).map((l) => ({ yc: l.yc, sub: [l.words] }))
+          : inBand[i].length ? [{ yc: (a + z) / 2, sub: groupLines(inBand[i]).map((l) => l.words) }] : []),
+      ].sort((a, b) => a.yc - b.yc);
+    } else {
+      lines = groupLines(words).map((l) => ({ yc: l.yc, sub: [l.words] }));
     }
-    for (const l of lines) l.words.sort((a, b) => a.x0 - b.x0);
+    for (const l of lines) l.words = l.sub.flat();
+    const banded = hs.length >= 3;
 
-    // Ô trong 1 dòng: nối các từ đứng sát nhau
-    const cellsOf = (l) => {
+    // Ô trong 1 dòng chữ: nối các từ đứng sát nhau
+    const cellsOfSub = (ws) => {
       const cells = [];
-      for (const w of l.words) {
+      for (const w of ws) {
         const c = cells[cells.length - 1];
         if (c && w.x0 - c.x1 < h * 0.9) { c.text += " " + w.text; c.x1 = Math.max(c.x1, w.x1); }
-        else cells.push({ text: w.text, x0: w.x0, x1: w.x1 });
+        else cells.push({ text: w.text, x0: w.x0, x1: w.x1, conf: w.conf });
       }
       return cells;
     };
+    const cellsOf = (l) => l.sub.flatMap(cellsOfSub);
+    // Chữ đủ tin cậy (PDF luôn tin cậy): chữ rác do vết bẩn/đường kẻ không được làm hỏng việc chia cột
+    const solid = (w) => w.conf === null || w.conf === undefined || w.conf >= 60;
 
     // 2) Tìm dòng tiêu đề: nhiều ô trùng tên cột quen thuộc nhất; không có thì lấy dòng nhiều ô nhất
     let hi = 0, best = -1;
@@ -82,30 +118,33 @@
     // Tiêu đề 2 tầng ("Giá" / "nhập" trên 2 dòng sát nhau) -> gộp dòng ngay dưới nếu nó không có số
     const headLines = [lines[hi]];
     const nx = lines[hi + 1];
-    if (nx && nx.yc - lines[hi].yc < h * 1.3 && !nx.words.some((w) => /\d/.test(w.text))) headLines.push(nx);
+    if (!banded && nx && nx.yc - lines[hi].yc < h * 1.3 && !nx.words.some((w) => /\d/.test(w.text))) headLines.push(nx);
     const bodyLines = lines.slice(hi + headLines.length);
     const headerWords = headLines.flatMap((l) => l.words);
 
     // 3) Ranh giới cột
     const allX0 = Math.min(...[...headerWords, ...bodyLines.flatMap((l) => l.words)].map((w) => w.x0));
     const allX1 = Math.max(...[...headerWords, ...bodyLines.flatMap((l) => l.words)].map((w) => w.x1));
+    // a) Đường kẻ dọc nằm trong vùng chữ (bảng có thể chỉ kẻ vài cột)
+    // Chỉ lấy đường kẻ nằm giữa chữ đầu và chữ cuối của dòng tiêu đề (bỏ viền ngoài bảng)
+    const hx0 = Math.min(...headerWords.map((w) => w.x0)), hx1 = Math.max(...headerWords.map((w) => w.x1));
+    const lineBounds = (vlines || []).filter((x) => x > hx0 + h * 0.3 && x < hx1 - h * 0.3);
     let bounds = [];
-    // a) Bảng có kẻ ô: dùng đường kẻ dọc nằm trong vùng chữ
-    if (vlines && vlines.length) bounds = vlines.filter((x) => x > allX0 + h * 0.3 && x < allX1 - h * 0.3).sort((a, b) => a - b);
-    // b) Không kẻ ô: tìm dải dọc trống xuyên suốt các dòng. Dòng tiêu đề luôn được tính là có chữ.
-    if (!bounds.length) {
+    // b) Dải dọc trống xuyên suốt các dòng (cho các cột không có đường kẻ).
+    //    Dòng thân bảng tính theo từng chữ; dòng tiêu đề tính theo cả ô (để "Giá nhập" không bị tách đôi).
+    {
       const body = bodyLines.filter((l) => cellsOf(l).length >= 2);
       const bin = Math.max(1, h / 4);
       const n = Math.ceil((allX1 - allX0) / bin) + 1;
       const cov = new Array(n).fill(0);
       const noise = Math.max(0, Math.floor(body.length * 0.08));
-      const markLine = (cells, weight) => {
+      const markLine = (spans, weight) => {
         const mark = new Uint8Array(n);
-        for (const c of cells) for (let b = Math.floor((c.x0 - allX0) / bin); b <= Math.floor((c.x1 - allX0) / bin); b++) mark[b] = 1;
+        for (const c of spans) for (let b = Math.floor((c.x0 - allX0) / bin); b <= Math.floor((c.x1 - allX0) / bin); b++) mark[b] = 1;
         for (let b = 0; b < n; b++) cov[b] += mark[b] * weight;
       };
-      for (const l of headLines) markLine(cellsOf(l), body.length + 1);
-      for (const l of body) markLine(cellsOf(l), 1);
+      for (const l of headLines) markLine(l.sub.flatMap((ws) => cellsOfSub(ws.filter(solid))), noise + 1);
+      for (const l of body) markLine(l.words.filter(solid), 1);
       let startGap = -1;
       for (let b = 0; b <= n; b++) {
         const empty = b < n && cov[b] <= noise;
@@ -116,6 +155,9 @@
         }
       }
     }
+    // Bảng kẻ đủ cột (>= 3 đường kẻ dọc bên trong) -> tin đường kẻ. Kẻ thiếu -> gộp thêm ranh giới theo khoảng trống.
+    if (lineBounds.length >= 3) bounds = lineBounds.slice().sort((a, b) => a - b);
+    else bounds = [...lineBounds, ...bounds.filter((b) => !lineBounds.some((x) => Math.abs(x - b) < h * 1.5))].sort((a, b) => a - b);
     const colOf = (w) => {
       const xc = (w.x0 + w.x1) / 2;
       let c = 0;
@@ -125,13 +167,28 @@
     let ncol = bounds.length + 1;
 
     // 4) Xếp chữ vào ô
+    // Trong 1 ô: xếp chữ theo dòng (dựa trên mép trên của chữ) rồi từ trái sang phải,
+    // để ô xuống 2-3 dòng đọc đúng thứ tự
+    // Chữ cùng dòng = khoảng dọc chồng lên nhau đủ nhiều (chữ có dấu cao như "Dầu" vẫn cùng dòng với "1")
+    const orderCell = (ws) => {
+      const rowsOf = [];
+      for (const w of [...ws].sort((a, b) => ycOf(a) - ycOf(b))) {
+        const r = rowsOf.find((r) => Math.min(r.y1, w.y1) - Math.max(r.y0, w.y0) > 0.4 * Math.min(r.y1 - r.y0, w.y1 - w.y0));
+        if (r) { r.ws.push(w); r.y0 = Math.min(r.y0, w.y0); r.y1 = Math.max(r.y1, w.y1); }
+        else rowsOf.push({ y0: w.y0, y1: w.y1, ws: [w] });
+      }
+      return rowsOf.sort((a, b) => a.y0 + a.y1 - b.y0 - b.y1).flatMap((r) => r.ws.sort((a, b) => a.x0 - b.x0));
+    };
     const place = (ws) => {
       const row = Array(ncol).fill(null), rc = Array(ncol).fill(null);
-      for (const w of ws) {
-        const c = colOf(w);
-        row[c] = row[c] ? row[c] + " " + w.text : w.text;
-        if (w.conf !== undefined && w.conf !== null) rc[c] = rc[c] === null ? w.conf : Math.min(rc[c], w.conf);
-      }
+      const per = Array.from({ length: ncol }, () => []);
+      for (const w of ws) per[colOf(w)].push(w);
+      per.forEach((cw, c) => {
+        for (const w of orderCell(cw)) {
+          row[c] = joinText(row[c], w.text);
+          if (w.conf !== undefined && w.conf !== null) rc[c] = rc[c] === null ? w.conf : Math.min(rc[c], w.conf);
+        }
+      });
       return { row, rc };
     };
     const headerLineWords = headLines.map((l) => l.words);
@@ -181,10 +238,34 @@
         rows.splice(i, 1); i--;
       } else if (prev && !isFrag(prev) && f.length === 1 && prev.row[f[0]] && r.yc - prev.yc < h * 1.9) {
         const c = f[0];
-        prev.row[c] += " " + r.row[c];
+        prev.row[c] = joinText(prev.row[c], r.row[c]);
         prev.rc[c] = joinConf(prev.rc[c], r.rc[c]);
         rows.splice(i, 1); i--;
       }
+    }
+
+    // 7a) Đơn vị tính đọc sai dấu ("Đối", "Đồi" -> "Đôi"): so theo chữ bỏ dấu với danh sách đơn vị thường gặp
+    const ukey = (t) => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[đĐ]/g, "d").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const unitCol = head.findIndex((t) => t && ["dvt", "donvi", "donvitinh"].includes(ukey(t)));
+    if (unitCol >= 0) {
+      for (const r of rows) {
+        const v = r.row[unitCol];
+        if (!v || r.rc[unitCol] === null) continue;
+        const std = UNITS.find((u) => ukey(u) === ukey(v));
+        if (std && std !== v) r.row[unitCol] = std;
+      }
+    }
+
+    // 7) Số tiền đọc từ ảnh: ký hiệu "đ" hay bị đọc thành #, 4, s, 2, : ở cuối ("61,000đ" -> "61.000#").
+    //    Số có dạng nhóm 3 chữ số mà dư 1 ký tự cuối -> bỏ ký tự đó và hạ độ tin cậy để người dùng soát.
+    for (const r of rows) {
+      r.row.forEach((v, c) => {
+        if (!v || r.rc[c] === null) return;
+        const m = String(v).match(/^\D{0,2}?(\d{1,3}(?:[.,]\d{3})+)\s?(?:[^\d\s]|\d)[^\d\s]?$/);
+        if (m && m[1] !== v) { r.row[c] = m[1]; r.rc[c] = Math.min(r.rc[c], 65); }
+        const plain = String(v).match(/^(\d{1,3}(?:[.,]\d{3})+)[đdĐ₫]$/);
+        if (plain) r.row[c] = plain[1];
+      });
     }
 
     return { grid: [head, ...rows.map((r) => r.row)], conf: [head.map(() => null), ...rows.map((r) => r.rc)] };
@@ -268,11 +349,12 @@
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.drawImage(img, 0, 0, cv.width, cv.height);
-    const { angle, vx } = preprocess(ctx, cv.width, cv.height);
-    // Toạ độ x của đường kẻ dọc sau khi xoay thẳng (xoay quanh tâm ảnh)
+    const { angle, vx, hy } = preprocess(ctx, cv.width, cv.height);
+    // Toạ độ đường kẻ sau khi xoay thẳng (xoay quanh tâm ảnh)
     const rad = (-angle * Math.PI) / 180, cx = cv.width / 2, cy = cv.height / 2;
     const vlines = vx.map(([x, y]) => cx + (x - cx) * Math.cos(rad) - (y - cy) * Math.sin(rad));
-    if (Math.abs(angle) < 0.15) return { cv, vlines };
+    const hlines = hy.map(([x, y]) => cy + (x - cx) * Math.sin(rad) + (y - cy) * Math.cos(rad));
+    if (Math.abs(angle) < 0.15) return { cv, vlines, hlines };
     const out = document.createElement("canvas");
     out.width = cv.width; out.height = cv.height;
     const o = out.getContext("2d");
@@ -280,7 +362,7 @@
     o.translate(out.width / 2, out.height / 2);
     o.rotate((-angle * Math.PI) / 180);
     o.drawImage(cv, -cv.width / 2, -cv.height / 2);
-    return { cv: out, vlines };
+    return { cv: out, vlines, hlines };
   }
 
   // Trả về góc nghiêng (độ) + các đường kẻ dọc [x, yGiữa], và ghi ảnh xám đã xoá đường kẻ vào ctx
@@ -306,6 +388,13 @@
     }
     const dark = new Uint8Array(W * H);
     for (let j = 0; j < g.length; j++) dark[j] = g[j] <= thr ? 1 : 0;
+    // Đường kẻ bảng thường là màu xám nhạt, sáng hơn ngưỡng Otsu -> dò đường kẻ bằng ngưỡng riêng:
+    // chỉ cần tối hơn màu nền (màu sáng phổ biến nhất) một chút
+    let bgv = 255, bgc = -1;
+    for (let t = 128; t < 256; t++) if (hist[t] > bgc) { bgc = hist[t]; bgv = t; }
+    const lineThr = Math.max(thr, bgv - 30);
+    const ld = new Uint8Array(W * H);
+    for (let j = 0; j < g.length; j++) ld[j] = g[j] < lineThr ? 1 : 0;
 
     // Góc nghiêng: thử -4°..4°, góc nào làm các dòng chữ "dồn" thành vạch ngang rõ nhất thì chọn
     const pts = [];
@@ -327,20 +416,34 @@
     // Đường kẻ: vệt tối liền rất dài. Cho phép lệch ±1 điểm ảnh để bắt cả đường hơi nghiêng.
     const erase = new Uint8Array(W * H);
     const minH = Math.max(60, W * 0.06), minV = Math.max(60, H * 0.05);
+    const hrows = []; // [y, độ dài, x giữa] của các vệt ngang dài
     for (let y = 1; y < H - 1; y++) {
-      let run = 0;
+      let run = 0, total = 0, xsum = 0;
       for (let x = 0; x <= W; x++) {
-        const on = x < W && (dark[y * W + x] || dark[(y - 1) * W + x] || dark[(y + 1) * W + x]);
+        const on = x < W && (ld[y * W + x] || ld[(y - 1) * W + x] || ld[(y + 1) * W + x]);
         if (on) { run++; continue; }
-        if (run >= minH) for (let k = x - run; k < x; k++) erase[y * W + k] = 1;
+        if (run >= minH) { for (let k = x - run; k < x; k++) erase[y * W + k] = 1; total += run; xsum += (x - run / 2) * run; }
         run = 0;
       }
+      if (total) hrows.push([y, total, xsum / total]);
     }
+    // Đường kẻ ngang: gom các hàng điểm ảnh sát nhau, giữ đường dài >= 50% đường dài nhất
+    const hg = [];
+    for (const v of hrows) {
+      const gr = hg[hg.length - 1];
+      if (gr && v[0] - gr.ye <= 3) { gr.ye = v[0]; gr.items.push(v); } else hg.push({ ye: v[0], items: [v] });
+    }
+    const hl = hg.map((gr) => {
+      const top = gr.items.reduce((a, b) => (b[1] > a[1] ? b : a));
+      return { y: gr.items.reduce((s, v) => s + v[0], 0) / gr.items.length, len: top[1], x: top[2] };
+    });
+    const maxH = Math.max(0, ...hl.map((v) => v.len));
+    const hy = hl.filter((v) => v.len >= maxH * 0.5).map((v) => [v.x, v.y]);
     const vcols = []; // [x, độ dài, y giữa] của các vệt dọc dài
     for (let x = 1; x < W - 1; x++) {
       let run = 0, total = 0, ysum = 0;
       for (let y = 0; y <= H; y++) {
-        const on = y < H && (dark[y * W + x] || dark[y * W + x - 1] || dark[y * W + x + 1]);
+        const on = y < H && (ld[y * W + x] || ld[y * W + x - 1] || ld[y * W + x + 1]);
         if (on) { run++; continue; }
         if (run >= minV) { for (let k = y - run; k < y; k++) erase[k * W + x] = 1; total += run; ysum += (y - run / 2) * run; }
         run = 0;
@@ -359,14 +462,13 @@
     });
     const maxLen = Math.max(0, ...vl.map((v) => v.len));
     const vx = vl.filter((v) => v.len >= maxLen * 0.35).map((v) => [v.x, v.y]);
-    // Nền sáng nhất quanh ngưỡng: dùng để tô lên chỗ đường kẻ đã xoá
-    const bg = Math.min(255, thr + (255 - thr) * 0.8) | 0;
+    // Tô màu nền lên chỗ đường kẻ đã xoá
     for (let j = 0, i = 0; j < g.length; j++, i += 4) {
-      const v = erase[j] && dark[j] ? bg : g[j];
+      const v = erase[j] && ld[j] ? bgv : g[j];
       d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
     }
     ctx.putImageData(im, 0, 0);
-    return { angle, vx };
+    return { angle, vx, hy };
   }
 
   // Đọc 2 lượt rồi gộp: PSM 11 (mẩu chữ rời, hợp với bảng) + PSM 3 (theo khối, bắt được chữ lượt 1 bỏ sót)
@@ -424,31 +526,32 @@
 
     // PDF scan (không có chữ): vẽ từng trang ra ảnh rồi nhận dạng
     const all = [];
-    let offset = 0, vl = [];
+    let offset = 0, vl = [], hl = [];
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
       const vp = page.getViewport({ scale: 2 });
       const raw = document.createElement("canvas");
       raw.width = vp.width; raw.height = vp.height;
       await page.render({ canvasContext: raw.getContext("2d"), viewport: vp }).promise;
-      const { cv, vlines } = toCanvas(raw, raw.width, raw.height);
-      if (p === 1) vl = vlines; // các trang cùng mẫu bảng -> dùng đường kẻ của trang đầu
+      const { cv, vlines, hlines } = toCanvas(raw, raw.width, raw.height);
+      if (p === 1) vl = vlines; // các trang cùng mẫu bảng -> dùng đường kẻ dọc của trang đầu
+      hl.push(...hlines.map((y) => y + offset));
       all.push(...(await ocrCanvas(cv, offset, `Trang ${p}/${pdf.numPages}`, onProgress)));
       offset += cv.height + 40;
     }
-    return { method: "ocr", pages: pdf.numPages, ...buildTable(all, headerScore, vl) };
+    return { method: "ocr", pages: pdf.numPages, ...buildTable(all, headerScore, vl, hl) };
   }
 
   async function fromImage(file, headerScore, onProgress) {
     onProgress && onProgress("Đang mở ảnh…");
     const img = await loadImage(file);
-    const { cv, vlines } = toCanvas(img, img.width, img.height);
+    const { cv, vlines, hlines } = toCanvas(img, img.width, img.height);
     const words = await ocrCanvas(cv, 0, "", onProgress);
-    return { method: "ocr", pages: 1, ...buildTable(words, headerScore, vlines) };
+    return { method: "ocr", pages: 1, ...buildTable(words, headerScore, vlines, hlines) };
   }
 
   const isPdf = (f) => /\.pdf$/i.test(f.name) || f.type === "application/pdf";
   const isImage = (f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|bmp|gif|heic|heif)$/i.test(f.name);
 
-  root.KiotExtract = { fromPdf, fromImage, isPdf, isImage, buildTable };
+  root.KiotExtract = { fromPdf, fromImage, isPdf, isImage, buildTable, _toCanvas: toCanvas };
 })(typeof window !== "undefined" ? window : globalThis);

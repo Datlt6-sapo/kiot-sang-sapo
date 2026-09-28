@@ -360,8 +360,14 @@ const ASSETS = /*__ASSETS__*/;
   }
 
   // ---------- Màn hình ghép cột ----------
-  function sampleOf(a, col) {
+  function sampleOf(a, col, mapping) {
     if (!col) return "";
+    if (col === KiotConverter.CODE_FROM_NAME) {
+      const nm = mapping && mapping.name;
+      if (!nm) return "(chọn cột Tên sản phẩm trước)";
+      for (const r of a.input.rows.slice(0, 200)) { const sp = KiotConverter.splitCodeFromName(r[nm]); if (sp) return sp[0]; }
+      return "(không tách được)";
+    }
     for (const r of a.input.rows.slice(0, 200)) {
       const v = r[col];
       if (v !== null && v !== undefined && String(v).trim() !== "") { const t = String(v); return t.length > 42 ? t.slice(0, 42) + "…" : t; }
@@ -373,7 +379,10 @@ const ASSETS = /*__ASSETS__*/;
     mapping = { ...mapping };
     status = status || {};
     const schema = SCHEMAS[type];
-    const opts = (sel) => `<option value="">— Không có —</option>` + a.input.headers.map((h) => `<option value="${esc(h)}"${h === sel ? " selected" : ""}>${esc(h)}</option>`).join("");
+    const CFN = KiotConverter.CODE_FROM_NAME;
+    const opts = (sel, fid) => `<option value="">— Không có —</option>`
+      + (type === "product" && fid === "code" ? `<option value="${CFN}"${sel === CFN ? " selected" : ""}>Tách từ cuối tên hàng</option>` : "")
+      + a.input.headers.map((h) => `<option value="${esc(h)}"${h === sel ? " selected" : ""}>${esc(h)}</option>`).join("");
     const chip = (f) => {
       if (f.required && !mapping[f.id]) return `<span class="pill bad">Bắt buộc</span>`;
       if (!mapping[f.id]) return "";
@@ -398,8 +407,8 @@ const ASSETS = /*__ASSETS__*/;
             <tbody>${schema.fields.map((f) => `
               <tr data-f="${f.id}">
                 <td><div class="fname">${esc(f.label)}${f.required ? ` <span class="req">*</span>` : ""}</div>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ""}</td>
-                <td><div class="pick"><select id="map-${f.id}" aria-label="${esc(f.label)}">${opts(mapping[f.id])}</select>${chip(f)}</div></td>
-                <td class="sample">${esc(sampleOf(a, mapping[f.id]))}</td>
+                <td><div class="pick"><select id="map-${f.id}" aria-label="${esc(f.label)}">${opts(mapping[f.id], f.id)}</select>${chip(f)}</div></td>
+                <td class="sample">${esc(sampleOf(a, mapping[f.id], mapping))}</td>
               </tr>`).join("")}
             </tbody>
           </table>
@@ -426,7 +435,9 @@ const ASSETS = /*__ASSETS__*/;
         mapping[id] = e.target.value || undefined;
         if (!mapping[id]) delete mapping[id];
         status[id] = "manual";
-        tr.querySelector(".sample").textContent = sampleOf(a, mapping[id]);
+        tr.querySelector(".sample").textContent = sampleOf(a, mapping[id], mapping);
+        const codeTr = card.querySelector('tr[data-f="code"] .sample');
+        if (id === "name" && codeTr) codeTr.textContent = sampleOf(a, mapping.code, mapping);
         const old = tr.querySelector(".pick .pill"); if (old) old.remove();
         tr.querySelector(".pick").insertAdjacentHTML("beforeend", chip(f));
         refreshGo();
@@ -490,7 +501,7 @@ const ASSETS = /*__ASSETS__*/;
           <summary>Cột đã dùng (${mapped.length})</summary>
           <div class="tablewrap"><table>
             <thead><tr><th>Cột Sapo</th><th>Lấy từ cột</th></tr></thead>
-            <tbody>${mapped.map((f) => `<tr><td>${esc(f.label)}</td><td>${esc(mapping[f.id])}</td></tr>`).join("")}</tbody>
+            <tbody>${mapped.map((f) => `<tr><td>${esc(f.label)}</td><td>${esc(mapping[f.id] === KiotConverter.CODE_FROM_NAME ? "Tách từ cuối tên hàng" : mapping[f.id])}</td></tr>`).join("")}</tbody>
           </table></div>
         </details>
         <div><button type="button" class="btn ghost" data-act="remap">Sửa cách ghép cột</button></div>

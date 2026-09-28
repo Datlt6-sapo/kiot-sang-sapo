@@ -102,10 +102,25 @@
     },
   };
 
+  // Mã hàng nằm ở cuối tên (vd "DÉP SỤC ... SIZE 37-38 NE11-37-38-KEM"): chữ cuối viết hoa, có cả chữ và số,
+  // dài >= 4 ký tự. Trả về [mã, tên đã bỏ mã] hoặc null.
+  const CODE_FROM_NAME = "__ma_tu_ten__";
+  const CODE_TAIL = /^(.*\S)\s+([A-ZĐ0-9][A-ZĐ0-9._\/-]*)$/u;
+  function splitCodeFromName(name) {
+    if (isEmpty(name)) return null;
+    const m = String(name).trim().match(CODE_TAIL);
+    if (!m) return null;
+    const code = m[2].replace(/[-.]+$/, "");
+    if (code.length < 4 || !/[0-9]/.test(code) || !/[A-ZĐ]/.test(code)) return null;
+    // Dung tích/khối lượng (330ML, 500G, 1.5L...) không phải mã hàng
+    if (/^[\d.,]+(ML|L|G|GR|KG|CM|MM|M|OZ|CC)$/i.test(code)) return null;
+    return [code, m[1].trim()];
+  }
+
   // Ghép cột: khớp chính xác trước (theo khoá bỏ dấu), sau đó mới đoán gần đúng.
   // Đoán gần đúng chỉ khi tên cột chứa tên gọi và chỉ dư ít ký tự (vd "Giá bán lẻ" ~ "Giá bán"),
   // để không ghép nhầm kiểu "Tỉnh/Thành phố (xuất HĐ)" vào "Tỉnh/Thành phố".
-  function autoMap(headers, schema) {
+  function autoMap(headers, schema, rows) {
     const used = new Set();
     const mapping = {}, status = {};
     const hk = headers.map((h) => ({ h, k: key(h) }));
@@ -129,6 +144,11 @@
         }
       }
       if (best) { mapping[f.id] = best.h; status[f.id] = "guess"; used.add(best.h); }
+    }
+    if (rows && schema === SCHEMAS.product && !mapping.code && mapping.name) {
+      const sample = rows.slice(0, 200).map((r) => r[mapping.name]).filter((v) => !isEmpty(v));
+      const hits = sample.filter((v) => splitCodeFromName(v)).length;
+      if (sample.length && hits >= sample.length * 0.6) { mapping.code = CODE_FROM_NAME; status.code = "guess"; }
     }
     const missingRequired = schema.fields.filter((f) => f.required && !mapping[f.id]).map((f) => f.id);
     const exact = Object.values(status).filter((s) => s === "exact").length;
@@ -205,7 +225,7 @@
     // src: nội dung file Excel (ArrayBuffer/Uint8Array) hoặc { grid, headerIdx } đã đọc từ PDF/ảnh
     function analyze(src) {
       const input = src && src.grid ? inputFromGrid(src.grid, src.headerIdx) : readInput(src);
-      const cands = Object.keys(SCHEMAS).map((t) => ({ type: t, ...autoMap(input.headers, SCHEMAS[t]) }));
+      const cands = Object.keys(SCHEMAS).map((t) => ({ type: t, ...autoMap(input.headers, SCHEMAS[t], input.rows) }));
       cands.sort((a, b) => (a.missingRequired.length - b.missingRequired.length) || (b.exact - a.exact));
       const best = cands[0];
       const recognized = best.missingRequired.length === 0 && best.exact > 0;
@@ -261,6 +281,15 @@
     // =====================================================================
     async function convertProducts(input, m) {
       checkRequired("product", m);
+      if (m.code === CODE_FROM_NAME) {
+        // Tạo 2 cột ảo: mã tách ra, tên đã bỏ mã. Dòng không tách được thì để mã trống để người dùng thấy.
+        const nameCol = m.name;
+        input = { ...input, rows: input.rows.map((r) => {
+          const sp = splitCodeFromName(r[nameCol]);
+          return { ...r, __code: sp ? sp[0] : null, __name: sp ? sp[1] : r[nameCol] };
+        }) };
+        m = { ...m, code: "__code", name: "__name" };
+      }
       // Giá: ưu tiên Giá bán sau thuế -> Giá bán -> Giá bán trước thuế
       const priceCol = m.priceAfterTax || m.price || m.priceBeforeTax || null;
       const g = (r, k) => (m[k] ? val(r[m[k]]) : null);
@@ -271,6 +300,7 @@
         return null;
       };
 
+      const noCode = input.rows.filter((r) => isEmpty(r[m.code])).length;
       const donLe = [], quyDoi = [];
       for (const r of input.rows) {
         const q = m.qty ? num(r[m.qty]) : null;
@@ -281,6 +311,7 @@
       if (!m.qty) warnings.push("Không có cột Quy đổi: mọi dòng được coi là sản phẩm đơn lẻ.");
       if (!refCols.length && quyDoi.length) warnings.push("Không có cột SKU gốc: cột “SKU tham chiếu” trong file quy đổi để trống.");
       if (!priceCol) warnings.push("Không có cột giá bán: cột “Giá” để trống.");
+      if (noCode) warnings.push(`${noCode} dòng không có mã hàng: Sapo sẽ tự tạo mã khi nhập.`);
 
       // ---- File 1: đơn lẻ ----
       const wb1 = await loadTemplate(T.donLe);
@@ -548,10 +579,10 @@
       return run(a.input, a.type, a.mapping);
     }
 
-    return { analyze, run, convert, readInput, inputFromGrid, findHeaderRow, headerScore, signature, slugify, matchAddress, SCHEMAS };
+    return { analyze, run, convert, splitCodeFromName, CODE_FROM_NAME, readInput, inputFromGrid, findHeaderRow, headerScore, signature, slugify, matchAddress, SCHEMAS };
   }
 
-  const api = { createConverter, SCHEMAS };
+  const api = { createConverter, SCHEMAS, CODE_FROM_NAME, splitCodeFromName };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.KiotConverter = api;
 })(typeof window !== "undefined" ? window : globalThis);
