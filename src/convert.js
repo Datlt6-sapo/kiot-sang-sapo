@@ -145,7 +145,20 @@
     const allAliasKeys = new Set();
     for (const s of Object.values(SCHEMAS)) for (const f of s.fields) for (const a of f.aliases) allAliasKeys.add(key(a));
 
-    function readInput(buf) {
+    // Số ô trong 1 dòng trùng tên cột quen thuộc (dùng để tìm dòng tiêu đề)
+    function headerScore(row) {
+      return (row || []).filter((c) => !isEmpty(c) && allAliasKeys.has(key(c))).length;
+    }
+    function findHeaderRow(grid, limit) {
+      let headerIdx = 0, bestScore = -1;
+      for (let i = 0; i < Math.min(limit || 20, grid.length); i++) {
+        const score = headerScore(grid[i]);
+        if (score > bestScore) { bestScore = score; headerIdx = i; }
+      }
+      return headerIdx;
+    }
+
+    function gridFromWorkbook(buf) {
       const wb = XLSX.read(buf, { type: "array" });
       // Chọn sheet có nhiều dữ liệu nhất (file từ phần mềm khác hay có sheet hướng dẫn ở đầu)
       let grid = [];
@@ -153,12 +166,12 @@
         const g = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: null, raw: true, blankrows: false });
         if (g.length > grid.length) grid = g;
       }
-      // Tìm dòng tiêu đề trong 20 dòng đầu: dòng có nhiều ô trùng tên cột quen thuộc nhất
-      let headerIdx = 0, bestScore = -1;
-      for (let i = 0; i < Math.min(20, grid.length); i++) {
-        const score = (grid[i] || []).filter((c) => !isEmpty(c) && allAliasKeys.has(key(c))).length;
-        if (score > bestScore) { bestScore = score; headerIdx = i; }
-      }
+      return grid;
+    }
+
+    // grid: mảng các dòng (mảng ô). headerIdx bỏ trống thì tự tìm trong 20 dòng đầu.
+    function inputFromGrid(grid, headerIdx) {
+      if (headerIdx === undefined || headerIdx === null) headerIdx = findHeaderRow(grid);
       const raw = grid[headerIdx] || [];
       const width = Math.max(raw.length, ...grid.slice(headerIdx, headerIdx + 50).map((r) => r.length));
       const seen = {};
@@ -180,13 +193,18 @@
       return { headers: nonEmpty, rows, headerRow: headerIdx + 1 };
     }
 
+    function readInput(buf) {
+      return inputFromGrid(gridFromWorkbook(buf));
+    }
+
     // Chữ ký file: dùng để nhớ cách ghép cột cho các file cùng kiểu
     function signature(headers) {
       return headers.map(key).sort().join("|");
     }
 
-    function analyze(buf) {
-      const input = readInput(buf);
+    // src: nội dung file Excel (ArrayBuffer/Uint8Array) hoặc { grid, headerIdx } đã đọc từ PDF/ảnh
+    function analyze(src) {
+      const input = src && src.grid ? inputFromGrid(src.grid, src.headerIdx) : readInput(src);
       const cands = Object.keys(SCHEMAS).map((t) => ({ type: t, ...autoMap(input.headers, SCHEMAS[t]) }));
       cands.sort((a, b) => (a.missingRequired.length - b.missingRequired.length) || (b.exact - a.exact));
       const best = cands[0];
@@ -530,7 +548,7 @@
       return run(a.input, a.type, a.mapping);
     }
 
-    return { analyze, run, convert, readInput, signature, slugify, matchAddress, SCHEMAS };
+    return { analyze, run, convert, readInput, inputFromGrid, findHeaderRow, headerScore, signature, slugify, matchAddress, SCHEMAS };
   }
 
   const api = { createConverter, SCHEMAS };

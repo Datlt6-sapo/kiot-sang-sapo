@@ -115,6 +115,20 @@ th{position:sticky;top:0;background:var(--surface);font-weight:600;color:var(--m
 .remember{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
 .remember input{accent-color:var(--accent);width:16px;height:16px}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
+.grid{max-height:460px;border:1px solid var(--line);border-radius:10px}
+.grid table{width:auto;min-width:100%}
+.grid td{min-width:70px;max-width:260px;white-space:pre-wrap;word-break:break-word;font-size:13px;outline:none}
+.grid td:focus{box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface)}
+.grid td.hd{font-weight:600;background:var(--sunk);position:sticky;top:0;z-index:1}
+.grid td.miss{box-shadow:inset 0 0 0 1.5px var(--warn);border-radius:0}
+.grid td.low{background:var(--warn-soft);color:var(--ink)}
+.grid th.rn{position:sticky;left:0;background:var(--surface);width:30px;padding:4px;z-index:2}
+.grid tr:first-child th.rn{top:0;z-index:3}
+.x{border:0;background:transparent;color:var(--muted);font-size:17px;line-height:1;cursor:pointer;border-radius:5px;padding:2px 6px}
+.x:hover{background:var(--bad-soft);color:var(--bad)}
+.x:focus-visible{outline:2px solid var(--accent)}
+.imgwrap{padding:10px;border-top:1px solid var(--line);max-height:520px;overflow:auto}
+.imgwrap img{display:block;max-width:100%;height:auto}
 .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
 .steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px;color:var(--muted)}
 .steps b{color:var(--ink);font-weight:600}
@@ -127,14 +141,14 @@ footer{font-size:13px;color:var(--muted)}
   <header>
     <div class="route"><span class="chip">KiotViet</span><span aria-hidden="true">→</span><span class="chip to">Sapo</span></div>
     <h1>Kiot sang Sapo</h1>
-    <p>Thả file “Danh sách hàng hóa” hoặc “Danh sách khách hàng” xuất từ KiotViet, hoặc file Excel từ phần mềm khác. Ứng dụng tự nhận loại file và cột, điền vào đúng file mẫu nhập của Sapo rồi tải về máy. Cột nào chưa chắc, ứng dụng hỏi bạn một lần rồi nhớ cho lần sau. Dữ liệu chỉ xử lý trên máy bạn, không gửi đi đâu.</p>
+    <p>Thả file “Danh sách hàng hóa” hoặc “Danh sách khách hàng” xuất từ KiotViet, hoặc file Excel, PDF, ảnh chụp bảng từ phần mềm khác. Ứng dụng tự nhận loại file và cột, điền vào đúng file mẫu nhập của Sapo rồi tải về máy. Cột nào chưa chắc, ứng dụng hỏi bạn một lần rồi nhớ cho lần sau. Dữ liệu chỉ xử lý trên máy bạn, không gửi đi đâu.</p>
   </header>
 
   <section style="display:grid;gap:10px">
     <div class="drop" id="drop">
-      <input type="file" id="file" accept=".xlsx,.xls" multiple aria-label="Chọn file cần chuyển">
+      <input type="file" id="file" accept=".xlsx,.xls,.csv,.pdf,image/*" multiple aria-label="Chọn file cần chuyển">
       <strong>Kéo thả file vào đây</strong>
-      <span class="muted">.xlsx hoặc .xls · chọn được nhiều file một lúc</span>
+      <span class="muted">Excel, PDF hoặc ảnh chụp bảng · chọn được nhiều file một lúc</span>
       <span class="btn">Chọn file</span>
     </div>
     <div class="opts">
@@ -180,6 +194,7 @@ footer{font-size:13px;color:var(--muted)}
 
 <script>/*__LIBS__*/</script>
 <script>/*__CONVERT__*/</script>
+<script>/*__EXTRACT__*/</script>
 <script>
 const ASSETS = /*__ASSETS__*/;
 </script>
@@ -252,6 +267,8 @@ const ASSETS = /*__ASSETS__*/;
     results.prepend(card);
     await wait(30); // để giao diện kịp hiện trạng thái trước khi xử lý file lớn
 
+    if (KiotExtract.isPdf(file) || KiotExtract.isImage(file)) return extractAndReview(card, file);
+
     let a;
     try {
       a = conv.analyze(new Uint8Array(await file.arrayBuffer()));
@@ -262,6 +279,84 @@ const ASSETS = /*__ASSETS__*/;
     if (saved) return convertAndShow(card, file, a, saved.type, saved.mapping, "Dùng cách ghép cột đã lưu cho kiểu file này");
     if (!a.needsReview) return convertAndShow(card, file, a, a.type, a.mapping, null);
     showMapper(card, file, a, a.type, a.mapping, a.status);
+  }
+
+
+  // ---------- PDF / ảnh: đọc bảng rồi cho người dùng soát, sửa ----------
+  async function extractAndReview(card, file) {
+    const setMsg = (m) => { const el = card.querySelector("h2"); if (el) el.textContent = m; };
+    let ext;
+    try {
+      const fn = KiotExtract.isPdf(file) ? KiotExtract.fromPdf : KiotExtract.fromImage;
+      ext = await fn(file, conv.headerScore, setMsg);
+    } catch (err) { showError(card, file, err); return; }
+    if (!ext.grid.length || ext.grid.length < 2) {
+      showError(card, file, new Error(ext.method === "ocr"
+        ? "Không đọc được bảng nào trong ảnh. Hãy chụp thẳng, đủ sáng, rõ nét và chỉ lấy phần bảng."
+        : "Không tìm thấy bảng nào trong file PDF."));
+      return;
+    }
+    showReview(card, file, ext);
+  }
+
+  const LOW = 70; // độ tin cậy nhận dạng dưới mức này thì tô màu cho người dùng soát
+  function showReview(card, file, ext) {
+    const grid = ext.grid.map((r) => r.map((v) => (v == null ? "" : String(v))));
+    const conf = ext.conf || [];
+    const width = Math.max(...grid.map((r) => r.length));
+    let lowCount = 0;
+    const confs = [];
+    conf.forEach((r) => r.forEach((c) => { if (c !== null && c !== undefined) { confs.push(c); if (c < LOW) lowCount++; } }));
+    const avg = confs.length ? Math.round(confs.reduce((x, y) => x + y, 0) / confs.length) : null;
+    const isOcr = ext.method === "ocr";
+    const imgUrl = KiotExtract.isImage(file) ? URL.createObjectURL(file) : null;
+
+    // Cột mà phần lớn các dòng có chữ: ô trống ở cột đó nhiều khả năng là máy đọc sót
+    const dense = Array.from({ length: width }, (_, c) => grid.slice(1).filter((r) => r[c]).length >= (grid.length - 1) * 0.6);
+    let missCount = 0;
+    const cell = (v, r, c) => {
+      const cf = conf[r] && conf[r][c];
+      const low = isOcr && r > 0 && v && cf !== null && cf !== undefined && cf < LOW;
+      const miss = isOcr && r > 0 && !v && dense[c] && grid[r].filter(Boolean).length >= 2;
+      if (miss) missCount++;
+      return `<td contenteditable="true" spellcheck="false" class="${r === 0 ? "hd" : ""}${low ? " low" : ""}${miss ? " miss" : ""}"${low ? ` title="Độ tin cậy ${cf}%"` : miss ? ` title="Ô trống, có thể máy đọc sót"` : ""}>${esc(v)}</td>`;
+    };
+    const rowsHtml = grid.map((row, r) => `<tr data-r="${r}"><th class="rn">${r === 0 ? "" : `<button type="button" class="x" title="Bỏ dòng này" aria-label="Bỏ dòng ${r}">×</button>`}</th>${Array.from({ length: width }, (_, c) => cell(row[c] || "", r, c)).join("")}</tr>`).join("");
+
+    const sub = `${isOcr ? "Nhận dạng chữ từ ảnh" : "Đọc chữ từ PDF"} · <span class="num">${fmt(grid.length - 1)}</span> dòng × <span class="num">${width}</span> cột`
+      + (ext.pages > 1 ? ` · <span class="num">${ext.pages}</span> trang` : "")
+      + (avg !== null ? ` · độ tin cậy trung bình <span class="num">${avg}%</span>` : "");
+    card.innerHTML = headHtml(file, "Kiểm tra bảng đã đọc", `<span class="pill warn">Cần bạn soát</span>`, sub) + `
+      <div class="job-body">
+        <p style="margin:0">${isOcr
+          ? `Chữ đọc từ ảnh có thể sai, nhất là số tiền và mã hàng. Bấm vào ô để sửa.${lowCount ? ` <b>${fmt(lowCount)} ô tô vàng</b> là chỗ máy đọc không chắc.` : ""}${missCount ? ` <b>${fmt(missCount)} ô viền đứt</b> đang trống, có thể máy đọc sót.` : ""}${lowCount || missCount ? " Hãy đối chiếu với ảnh gốc." : ""}`
+          : "Kiểm tra các cột có thẳng hàng không. Bấm vào ô để sửa, bấm × để bỏ dòng thừa (tổng cộng, chữ ký…)."} Dòng đầu tiên là tiêu đề cột.</p>
+        ${imgUrl ? `<details><summary>Xem ảnh gốc</summary><div class="imgwrap"><img src="${imgUrl}" alt="Ảnh gốc ${esc(file.name)}"></div></details>` : ""}
+        <div class="tablewrap grid"><table>
+          <tbody>${rowsHtml}</tbody>
+        </table></div>
+        <div class="actions">
+          <span class="muted" style="font-size:13.5px">Sai lệch cột nhiều thì nên xuất lại file Excel từ phần mềm gốc nếu có thể.</span>
+          <div class="btns"><button type="button" class="btn ghost" data-act="cancel">Bỏ file này</button><button type="button" class="btn" data-act="next">Tiếp tục ghép cột</button></div>
+        </div>
+      </div>`;
+
+    card.querySelectorAll("button.x").forEach((b) => b.addEventListener("click", () => b.closest("tr").remove()));
+    card.querySelector('[data-act="cancel"]').addEventListener("click", () => { if (imgUrl) URL.revokeObjectURL(imgUrl); card.remove(); });
+    card.querySelector('[data-act="next"]').addEventListener("click", () => {
+      const edited = [...card.querySelectorAll(".grid tr")].map((tr) => [...tr.querySelectorAll("td")].map((td) => td.textContent.trim() || null));
+      if (imgUrl) URL.revokeObjectURL(imgUrl);
+      let a;
+      try { a = conv.analyze({ grid: edited, headerIdx: 0 }); }
+      catch (err) { showError(card, file, err); return; }
+      if (!a.input.rows.length) { showError(card, file, new Error("Bảng không còn dòng dữ liệu nào.")); return; }
+      // Luôn cho xem lại cách ghép cột với file PDF/ảnh; có cách ghép đã lưu thì điền sẵn
+      const saved = loadSaved(a);
+      if (saved) {
+        const st = {}; for (const k in saved.mapping) st[k] = "manual";
+        showMapper(card, file, a, saved.type, saved.mapping, st);
+      } else showMapper(card, file, a, a.type, a.mapping, a.status);
+    });
   }
 
   // ---------- Màn hình ghép cột ----------
@@ -358,7 +453,7 @@ const ASSETS = /*__ASSETS__*/;
     try { res = await conv.run(a.input, type, mapping); }
     catch (err) { showError(card, file, err); return; }
 
-    const base = file.name.replace(/\.(xlsx|xls)$/i, "");
+    const base = file.name.replace(/\.[a-z0-9]+$/i, "");
     const outs = res.files.map((f) => ({ ...f, filename: `${f.name} (${base}).xlsx` }));
     const hasBad = res.checks.some((c) => !c.ok);
     const hasWarn = res.warnings.length > 0;

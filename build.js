@@ -17,6 +17,7 @@ const libs = inline(r("vendor/xlsx.full.min.js").toString()) + "\n" + inline(r("
 const html = r("src/app.html").toString()
   .replace("/*__LIBS__*/", () => libs)
   .replace("/*__CONVERT__*/", () => inline(r("src/convert.js").toString()))
+  .replace("/*__EXTRACT__*/", () => inline(r("src/extract.js").toString()))
   .replace("/*__ASSETS__*/", () => JSON.stringify(assets));
 
 // "Kiot sang Sapo.html" để mở trên máy, "index.html" cho GitHub Pages
