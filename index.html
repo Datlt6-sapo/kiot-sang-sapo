@@ -98,6 +98,24 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{text-align:left;padding:7px 12px;border-bottom:1px solid var(--line);vertical-align:top}
 th{position:sticky;top:0;background:var(--surface);font-weight:600;color:var(--muted);font-size:12px}
 .err{color:var(--bad);margin:0}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:10px;background:var(--sunk);justify-self:start}
+.seg button{font:600 13.5px var(--sans);border:0;border-radius:7px;padding:7px 14px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-checked="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tablewrap.map{max-height:none;border:1px solid var(--line);border-radius:10px}
+.map td{vertical-align:middle}
+.fname{font-weight:600;font-size:13.5px}
+.req{color:var(--bad)}
+.hint{font-size:12px;color:var(--muted)}
+.pick{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pick select{font:14px var(--sans);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;max-width:230px}
+.pick select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sample{font:12.5px var(--mono);color:var(--muted);max-width:220px;word-break:break-word}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.remember{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
+.remember input{accent-color:var(--accent);width:16px;height:16px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
 .steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px;color:var(--muted)}
 .steps b{color:var(--ink);font-weight:600}
 footer{font-size:13px;color:var(--muted)}
@@ -109,13 +127,13 @@ footer{font-size:13px;color:var(--muted)}
   <header>
     <div class="route"><span class="chip">KiotViet</span><span aria-hidden="true">→</span><span class="chip to">Sapo</span></div>
     <h1>Kiot sang Sapo</h1>
-    <p>Thả file “Danh sách hàng hóa” hoặc “Danh sách khách hàng” xuất từ KiotViet. Ứng dụng tự nhận loại file, điền vào đúng file mẫu nhập của Sapo và tải về máy. Dữ liệu chỉ xử lý trên máy bạn, không gửi đi đâu.</p>
+    <p>Thả file “Danh sách hàng hóa” hoặc “Danh sách khách hàng” xuất từ KiotViet, hoặc file Excel từ phần mềm khác. Ứng dụng tự nhận loại file và cột, điền vào đúng file mẫu nhập của Sapo rồi tải về máy. Cột nào chưa chắc, ứng dụng hỏi bạn một lần rồi nhớ cho lần sau. Dữ liệu chỉ xử lý trên máy bạn, không gửi đi đâu.</p>
   </header>
 
   <section style="display:grid;gap:10px">
     <div class="drop" id="drop">
-      <input type="file" id="file" accept=".xlsx,.xls" multiple aria-label="Chọn file KiotViet">
-      <strong>Kéo thả file KiotViet vào đây</strong>
+      <input type="file" id="file" accept=".xlsx,.xls" multiple aria-label="Chọn file cần chuyển">
+      <strong>Kéo thả file vào đây</strong>
       <span class="muted">.xlsx hoặc .xls · chọn được nhiều file một lúc</span>
       <span class="btn">Chọn file</span>
     </div>
@@ -229,11 +247,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
  */function n(e){return e>=65&&e<=90||95===e||e>=97&&e<=122||e>=192&&e<=214||e>=216&&e<=246||e>=248&&e<=767||e>=880&&e<=893||e>=895&&e<=8191||e>=8204&&e<=8205||e>=8304&&e<=8591||e>=11264&&e<=12271||e>=12289&&e<=55295||e>=63744&&e<=64975||e>=65008&&e<=65533||e>=65536&&e<=983039}Object.defineProperty(r,"__esModule",{value:!0}),r.NC_NAME_START_CHAR="A-Z_a-z\xc0-\xd6\xd8-\xf6\xf8-\u02ff\u0370-\u037d\u037f-\u1fff\u200c-\u200d\u2070-\u218f\u2c00-\u2fef\u3001-\ud7ff\uf900-\ufdcf\ufdf0-\ufffd\ud800\udc00-\udb7f\udfff",r.NC_NAME_CHAR="-"+r.NC_NAME_START_CHAR+".0-9\xb7\u0300-\u036f\u203f-\u2040",r.NC_NAME_START_CHAR_RE=new RegExp("^["+r.NC_NAME_START_CHAR+"]$","u"),r.NC_NAME_CHAR_RE=new RegExp("^["+r.NC_NAME_CHAR+"]$","u"),r.NC_NAME_RE=new RegExp("^["+r.NC_NAME_START_CHAR+"]["+r.NC_NAME_CHAR+"]*$","u"),r.isNCNameStartChar=n,r.isNCNameChar=function(e){return n(e)||45===e||46===e||e>=48&&e<=57||183===e||e>=768&&e<=879||e>=8255&&e<=8256}},{}]},{},[15])(15)}));
 //# sourceMappingURL=exceljs.min.js.map</script>
 <script>/*
- * Lõi chuyển đổi KiotViet -> Sapo. Chạy được cả trong trình duyệt lẫn Node (để test).
+ * Lõi chuyển đổi file (KiotViet hoặc file khác) -> file mẫu nhập Sapo.
+ * Chạy được cả trong trình duyệt lẫn Node (để test).
  * Quy tắc map giữ đúng như 2 skill kiotviet-sapo-split và kiotviet-khach-hang-cong-no.
  *
  * createConverter({ XLSX, ExcelJS, templates, dmhcCsv })
  *   templates: { donLe, quyDoi, khachHang, congNo } -> Uint8Array/ArrayBuffer của file mẫu Sapo
+ *
+ * Luồng: analyze(buf) -> đọc file, tìm dòng tiêu đề, đoán loại file và ghép cột
+ *        run(input, type, mapping) -> tạo file Sapo theo cách ghép cột đã chốt
  */
 (function (root) {
   "use strict";
@@ -252,7 +274,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   function num(v) {
     if (isEmpty(v)) return null;
-    const n = typeof v === "number" ? v : Number(String(v).replace(/,/g, "").trim());
+    if (typeof v === "number") return v;
+    let s = String(v).replace(/\s|đ|₫|vnd|%/gi, "").trim();
+    // Số kiểu Việt Nam "1.250.000" hoặc "1.250.000,5"
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+    else s = s.replace(/,/g, "");
+    const n = Number(s);
     return isNaN(n) ? null : n;
   }
   function round2(n) {
@@ -268,21 +295,92 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function nospace(s) {
     return s.replace(/[^a-z0-9]/g, "");
   }
+  // Khoá so khớp tên cột: bỏ dấu, chữ thường, bỏ mọi ký tự không phải chữ/số
+  const key = (s) => nospace(norm(s));
   function slugify(text) {
     if (isEmpty(text)) return null;
     const s = stripMarks(String(text).trim()).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
     return s || null;
   }
 
-  // Dò tên cột: khớp không phân biệt hoa thường, bỏ khoảng trắng 2 đầu.
-  function findCol(headers, candidates) {
-    const map = {};
-    headers.forEach((h) => (map[String(h).trim().toLowerCase()] = h));
-    for (const c of candidates) {
-      const hit = map[c.trim().toLowerCase()];
-      if (hit !== undefined) return hit;
+  // =====================================================================
+  // DANH SÁCH CỘT SAPO CẦN ĐIỀN + các tên gọi thường gặp ở phần mềm khác
+  // (tên đầu tiên trong aliases là tên cột của KiotViet)
+  // =====================================================================
+  const SCHEMAS = {
+    product: {
+      label: "Danh sách hàng hóa",
+      fields: [
+        { id: "code", label: "Mã SKU", required: true, aliases: ["Mã hàng", "Mã SP", "Mã sản phẩm", "Mã hàng hóa", "SKU", "Mã SKU", "Mã"] },
+        { id: "name", label: "Tên sản phẩm", required: true, aliases: ["Tên hàng", "Tên sản phẩm", "Tên SP", "Tên hàng hóa", "Tên"] },
+        { id: "qty", label: "Quy đổi (1 = đơn lẻ)", hint: "Không có cột này thì mọi dòng là sản phẩm đơn lẻ", aliases: ["Quy đổi", "Tỷ lệ quy đổi", "Hệ số quy đổi", "Giá trị quy đổi", "Số lượng quy đổi"] },
+        { id: "baseRef", label: "SKU gốc của hàng quy đổi", aliases: ["Mã ĐVT Cơ bản", "Mã hàng cơ bản", "SKU gốc", "SKU tham chiếu", "Mã hàng gốc", "Mã SP gốc"] },
+        { id: "relatedRef", label: "Mã hàng liên quan", hint: "Dùng khi SKU gốc trống", aliases: ["Mã HH Liên quan", "Mã hàng liên quan"] },
+        { id: "unit", label: "Đơn vị tính", aliases: ["ĐVT", "Đơn vị tính", "Đơn vị"] },
+        { id: "priceAfterTax", label: "Giá bán sau thuế", hint: "Ưu tiên dùng nếu có", aliases: ["Giá bán sau thuế", "Giá sau thuế"] },
+        { id: "price", label: "Giá bán", aliases: ["Giá bán", "Giá bán lẻ", "Đơn giá", "Giá lẻ", "Giá"] },
+        { id: "priceBeforeTax", label: "Giá bán trước thuế", aliases: ["Giá bán trước thuế", "Giá trước thuế"] },
+        { id: "cost", label: "Giá vốn", aliases: ["Giá vốn", "Giá nhập", "Giá mua", "Giá vốn trung bình"] },
+        { id: "stock", label: "Tồn kho", aliases: ["Tồn kho", "Số lượng tồn", "Tồn", "Tồn cuối kỳ", "SL tồn", "Số lượng"] },
+        { id: "barcode", label: "Barcode", aliases: ["Mã vạch", "Barcode"] },
+        { id: "brand", label: "Nhãn hiệu", aliases: ["Thương hiệu", "Nhãn hiệu", "Hãng"] },
+        { id: "category", label: "Loại sản phẩm", aliases: ["Nhóm hàng(3 Cấp)", "Nhóm hàng (3 Cấp)", "Nhóm hàng", "Loại sản phẩm", "Danh mục", "Nhóm sản phẩm", "Nhóm SP", "Nhóm hàng hóa", "Ngành hàng"] },
+        { id: "vat", label: "Thuế VAT (%)", hint: "Có giá trị thì Áp dụng thuế = Có", aliases: ["VAT (%)", "VAT(%)", "VAT", "Thuế suất", "Thuế GTGT", "% VAT"] },
+        { id: "description", label: "Mô tả sản phẩm", aliases: ["Mô tả", "Mô tả sản phẩm"] },
+        { id: "image", label: "Ảnh đại diện", hint: "Lấy link đầu tiên", aliases: ["Hình ảnh (url1,url2...)", "Hình ảnh", "Ảnh", "Link ảnh", "Ảnh đại diện"] },
+        { id: "weight", label: "Khối lượng", aliases: ["Trọng lượng", "Khối lượng"] },
+      ],
+    },
+    customer: {
+      label: "Danh sách khách hàng",
+      fields: [
+        { id: "ten", label: "Tên khách hàng", required: true, aliases: ["Tên khách hàng", "Tên KH", "Họ tên", "Họ và tên", "Khách hàng", "Tên"] },
+        { id: "sdt", label: "Số điện thoại", required: true, hint: "Dòng trống SĐT được gán 0900000001…", aliases: ["Điện thoại", "SĐT", "Số điện thoại", "Di động", "Điện thoại di động", "Số ĐT", "SĐT di động", "ĐT", "Phone", "Mobile"] },
+        { id: "email", label: "Email", aliases: ["Email", "E-mail", "Thư điện tử"] },
+        { id: "diaChi", label: "Địa chỉ", aliases: ["Địa chỉ", "Địa chỉ chi tiết", "Số nhà, đường"] },
+        { id: "khuVuc", label: "Khu vực (Tỉnh - Huyện)", hint: "Dạng “Tỉnh - Huyện” như KiotViet", aliases: ["Khu vực giao hàng", "Khu vực"] },
+        { id: "tinh", label: "Tỉnh/Thành phố", aliases: ["Tỉnh/Thành phố", "Tỉnh/Thành", "Tỉnh thành", "Tỉnh", "Thành phố"] },
+        { id: "huyen", label: "Quận/Huyện", aliases: ["Quận/Huyện", "Quận huyện", "Huyện", "Quận"] },
+        { id: "xa", label: "Phường/Xã", aliases: ["Phường/Xã", "Phường xã", "Xã", "Phường"] },
+        { id: "gioiTinh", label: "Giới tính", aliases: ["Giới tính"] },
+        { id: "ghiChu", label: "Ghi chú", hint: "Cắt tối đa 255 ký tự", aliases: ["Ghi chú", "Note"] },
+        { id: "no", label: "Công nợ", hint: "Tạo file công nợ, bỏ dòng = 0", aliases: ["Nợ cần thu hiện tại", "Nợ hiện tại", "Công nợ", "Dư nợ", "Nợ phải thu", "Công nợ hiện tại", "Nợ"] },
+        { id: "tinhHd", label: "Tỉnh (xuất hóa đơn)", hint: "Dùng khi không có Khu vực/Tỉnh", aliases: ["Tỉnh/Thành phố (xuất HĐ)"] },
+      ],
+    },
+  };
+
+  // Ghép cột: khớp chính xác trước (theo khoá bỏ dấu), sau đó mới đoán gần đúng.
+  // Đoán gần đúng chỉ khi tên cột chứa tên gọi và chỉ dư ít ký tự (vd "Giá bán lẻ" ~ "Giá bán"),
+  // để không ghép nhầm kiểu "Tỉnh/Thành phố (xuất HĐ)" vào "Tỉnh/Thành phố".
+  function autoMap(headers, schema) {
+    const used = new Set();
+    const mapping = {}, status = {};
+    const hk = headers.map((h) => ({ h, k: key(h) }));
+    for (const f of schema.fields) {
+      for (const a of f.aliases) {
+        const hit = hk.find((x) => !used.has(x.h) && x.k === key(a));
+        if (hit) { mapping[f.id] = hit.h; status[f.id] = "exact"; used.add(hit.h); break; }
+      }
     }
-    return null;
+    for (const f of schema.fields) {
+      if (mapping[f.id]) continue;
+      let best = null;
+      for (const a of f.aliases) {
+        const ak = key(a);
+        if (ak.length < 4) continue;
+        for (const x of hk) {
+          if (used.has(x.h) || !x.k.includes(ak)) continue;
+          const extra = x.k.length - ak.length;
+          if (extra > 5) continue;
+          if (!best || extra < best.extra) best = { h: x.h, extra };
+        }
+      }
+      if (best) { mapping[f.id] = best.h; status[f.id] = "guess"; used.add(best.h); }
+    }
+    const missingRequired = schema.fields.filter((f) => f.required && !mapping[f.id]).map((f) => f.id);
+    const exact = Object.values(status).filter((s) => s === "exact").length;
+    return { mapping, status, missingRequired, exact };
   }
 
   function createConverter(opts) {
@@ -291,26 +389,69 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const T = opts.templates;
     let dmhc = null; // nạp lười khi cần
 
-    // ---------- Đọc file KiotViet ----------
+    // ---------- Đọc file ----------
+    const allAliasKeys = new Set();
+    for (const s of Object.values(SCHEMAS)) for (const f of s.fields) for (const a of f.aliases) allAliasKeys.add(key(a));
+
     function readInput(buf) {
       const wb = XLSX.read(buf, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
-      const clean = rows.map((r) => {
+      // Chọn sheet có nhiều dữ liệu nhất (file từ phần mềm khác hay có sheet hướng dẫn ở đầu)
+      let grid = [];
+      for (const n of wb.SheetNames) {
+        const g = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: null, raw: true, blankrows: false });
+        if (g.length > grid.length) grid = g;
+      }
+      // Tìm dòng tiêu đề trong 20 dòng đầu: dòng có nhiều ô trùng tên cột quen thuộc nhất
+      let headerIdx = 0, bestScore = -1;
+      for (let i = 0; i < Math.min(20, grid.length); i++) {
+        const score = (grid[i] || []).filter((c) => !isEmpty(c) && allAliasKeys.has(key(c))).length;
+        if (score > bestScore) { bestScore = score; headerIdx = i; }
+      }
+      const raw = grid[headerIdx] || [];
+      const width = Math.max(raw.length, ...grid.slice(headerIdx, headerIdx + 50).map((r) => r.length));
+      const seen = {};
+      const headers = [];
+      for (let c = 0; c < width; c++) {
+        let h = isEmpty(raw[c]) ? `Cột ${XLSX.utils.encode_col(c)}` : String(raw[c]).trim();
+        if (seen[h]) h = `${h} (${++seen[h]})`; else seen[h] = 1;
+        headers.push(h);
+      }
+      const rows = [];
+      for (const arr of grid.slice(headerIdx + 1)) {
+        if (!arr.some((v) => !isEmpty(v))) continue;
         const o = {};
-        for (const k in r) o[String(k).trim()] = r[k];
-        return o;
-      });
-      const headerRow = (XLSX.utils.sheet_to_json(ws, { header: 1, defval: null })[0] || []).map((h) => String(h == null ? "" : h).trim());
-      // Bỏ các dòng trống hoàn toàn
-      const data = clean.filter((r) => Object.values(r).some((v) => !isEmpty(v)));
-      return { headers: headerRow.filter((h) => h), rows: data };
+        headers.forEach((h, c) => (o[h] = arr[c] === undefined ? null : arr[c]));
+        rows.push(o);
+      }
+      // Bỏ cột tự đặt tên mà không có dữ liệu
+      const nonEmpty = headers.filter((h) => !/^Cột [A-Z]+$/.test(h) || rows.some((r) => !isEmpty(r[h])));
+      return { headers: nonEmpty, rows, headerRow: headerIdx + 1 };
     }
 
-    function detect(headers) {
-      if (findCol(headers, ["Tên khách hàng"])) return "customer";
-      if (findCol(headers, ["Mã hàng"]) && findCol(headers, ["Tên hàng"])) return "product";
-      return null;
+    // Chữ ký file: dùng để nhớ cách ghép cột cho các file cùng kiểu
+    function signature(headers) {
+      return headers.map(key).sort().join("|");
+    }
+
+    function analyze(buf) {
+      const input = readInput(buf);
+      const cands = Object.keys(SCHEMAS).map((t) => ({ type: t, ...autoMap(input.headers, SCHEMAS[t]) }));
+      cands.sort((a, b) => (a.missingRequired.length - b.missingRequired.length) || (b.exact - a.exact));
+      const best = cands[0];
+      const recognized = best.missingRequired.length === 0 && best.exact > 0;
+      const guessed = Object.values(best.status).includes("guess");
+      // Hàng hóa không có cột Quy đổi (file phần mềm khác, bảng giá...) -> cho người dùng xem lại trước
+      const noQty = best.type === "product" && !best.mapping.qty;
+      return {
+        input,
+        type: best.type,
+        recognized,
+        mapping: best.mapping,
+        status: best.status,
+        needsReview: !recognized || guessed || noQty,
+        signature: signature(input.headers),
+        candidates: Object.fromEntries(cands.map((c) => [c.type, { mapping: c.mapping, status: c.status }])),
+      };
     }
 
     async function loadTemplate(bytes) {
@@ -340,50 +481,36 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return await wb.xlsx.writeBuffer();
     }
 
+    function checkRequired(type, m) {
+      const miss = SCHEMAS[type].fields.filter((f) => f.required && !m[f.id]).map((f) => f.label);
+      if (miss.length) throw new Error("Chưa chọn cột cho: " + miss.join(", ") + ".");
+    }
+
     // =====================================================================
     // SẢN PHẨM  (đơn lẻ + quy đổi)
     // =====================================================================
-    async function convertProducts(input) {
-      const h = input.headers;
-      const cols = {
-        code: findCol(h, ["Mã hàng"]),
-        name: findCol(h, ["Tên hàng"]),
-        brand: findCol(h, ["Thương hiệu"]),
-        category: findCol(h, ["Nhóm hàng(3 Cấp)", "Nhóm hàng (3 Cấp)"]),
-        barcode: findCol(h, ["Mã vạch"]),
-        priceAfterTax: findCol(h, ["Giá bán sau thuế"]),
-        pricePlain: findCol(h, ["Giá bán"]),
-        priceBeforeTax: findCol(h, ["Giá bán trước thuế"]),
-        cost: findCol(h, ["Giá vốn"]),
-        stock: findCol(h, ["Tồn kho"]),
-        unit: findCol(h, ["ĐVT"]),
-        baseRefs: ["Mã ĐVT Cơ bản", "Mã HH Liên quan"].map((c) => findCol(h, [c])).filter(Boolean),
-        qty: findCol(h, ["Quy đổi"]),
-        vat: findCol(h, ["VAT (%)", "VAT(%)"]),
-        description: findCol(h, ["Mô tả"]),
-        image: findCol(h, ["Hình ảnh (url1,url2...)", "Hình ảnh"]),
-        weight: findCol(h, ["Trọng lượng"]),
-      };
-      const missing = [["code", "Mã hàng"], ["name", "Tên hàng"], ["qty", "Quy đổi"]].filter(([k]) => !cols[k]).map(([, n]) => n);
-      if (missing.length) throw new Error("File thiếu cột bắt buộc: " + missing.join(", ") + ". Hãy xuất lại file “Danh sách hàng hóa” từ KiotViet.");
-
+    async function convertProducts(input, m) {
+      checkRequired("product", m);
       // Giá: ưu tiên Giá bán sau thuế -> Giá bán -> Giá bán trước thuế
-      const priceCol = cols.priceAfterTax || cols.pricePlain || cols.priceBeforeTax;
-      const g = (r, k) => (cols[k] ? val(r[cols[k]]) : null);
-      // SKU tham chiếu: lấy giá trị đầu tiên có dữ liệu trong "Mã ĐVT Cơ bản" / "Mã HH Liên quan"
+      const priceCol = m.priceAfterTax || m.price || m.priceBeforeTax || null;
+      const g = (r, k) => (m[k] ? val(r[m[k]]) : null);
+      // SKU tham chiếu: SKU gốc, nếu trống thì Mã hàng liên quan
+      const refCols = [m.baseRef, m.relatedRef].filter(Boolean);
       const baseRef = (r) => {
-        for (const c of cols.baseRefs) if (!isEmpty(r[c])) return str(r[c]);
+        for (const c of refCols) if (!isEmpty(r[c])) return str(r[c]);
         return null;
       };
 
       const donLe = [], quyDoi = [];
       for (const r of input.rows) {
-        const q = num(r[cols.qty]);
+        const q = m.qty ? num(r[m.qty]) : null;
         (q === null || q === 1 ? donLe : quyDoi).push(r);
       }
 
       const warnings = [];
-      if (!cols.baseRefs.length && quyDoi.length) warnings.push("Không có cột “Mã ĐVT Cơ bản” / “Mã HH Liên quan”: cột “SKU tham chiếu” trong file quy đổi để trống.");
+      if (!m.qty) warnings.push("Không có cột Quy đổi: mọi dòng được coi là sản phẩm đơn lẻ.");
+      if (!refCols.length && quyDoi.length) warnings.push("Không có cột SKU gốc: cột “SKU tham chiếu” trong file quy đổi để trống.");
+      if (!priceCol) warnings.push("Không có cột giá bán: cột “Giá” để trống.");
 
       // ---- File 1: đơn lẻ ----
       const wb1 = await loadTemplate(T.donLe);
@@ -397,8 +524,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         put(ws1, i, 5, g(r, "category"));
         put(ws1, i, 8, "Có");
         put(ws1, i, 9, "Có");
-        if (cols.vat) put(ws1, i, 16, isEmpty(r[cols.vat]) ? "Không" : "Có");
-        put(ws1, i, 17, str(r[cols.code]), true);
+        if (m.vat) put(ws1, i, 16, isEmpty(r[m.vat]) ? "Không" : "Có");
+        put(ws1, i, 17, str(r[m.code]), true);
         put(ws1, i, 18, str(g(r, "barcode")), true);
         put(ws1, i, 19, g(r, "unit"));
         const img = g(r, "image");
@@ -420,7 +547,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       // ---- File 2: quy đổi ----
       const orphans = [];
       if (quyDoi.length) {
-        const baseName = new Map(donLe.map((r) => [str(r[cols.code]), r[cols.name]]));
+        const baseName = new Map(donLe.map((r) => [str(r[m.code]), r[m.name]]));
         const wb2 = await loadTemplate(T.quyDoi);
         const ws2 = wb2.getWorksheet("V2 Mẫu file nhập sản phẩm quy đ");
         clearRows(ws2, 2, 18);
@@ -429,17 +556,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
           const i = idx + 2;
           const ref = baseRef(r);
           const bn = ref ? baseName.get(ref) : undefined;
-          if (!bn) orphans.push({ sku: str(r[cols.code]), name: g(r, "name"), ref: ref || "(trống)" });
+          if (!bn) orphans.push({ sku: str(r[m.code]), name: g(r, "name"), ref: ref || "(trống)" });
           const alias = bn ? slugify(bn) : null;
           put(ws2, i, 1, alias);
           if (!(alias && seenAlias.has(alias))) {
             put(ws2, i, 2, bn || g(r, "name"));
             if (alias) seenAlias.add(alias);
           }
-          put(ws2, i, 3, str(r[cols.code]), true);
+          put(ws2, i, 3, str(r[m.code]), true);
           put(ws2, i, 4, ref, true);
           put(ws2, i, 7, g(r, "unit"));
-          const q = num(r[cols.qty]);
+          const q = num(r[m.qty]);
           if (q !== null) put(ws2, i, 8, q);
           const p = priceCol ? num(r[priceCol]) : null;
           if (p !== null) put(ws2, i, 10, round2(p));
@@ -467,20 +594,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     // KHÁCH HÀNG + CÔNG NỢ
     // =====================================================================
     const PRE_TINH = ["tinh", "thanh pho", "tp"];
-    // Khoá so khớp tỉnh: bỏ dấu, bỏ tiền tố, bỏ khoảng trắng/gạch -> "Bà Rịa - Vũng Tàu" = "Bà Rịa-Vũng Tàu", "Thành phố Hồ Chí Minh" = "TP Hồ Chí Minh"
-    const tinhKey = (s) => nospace(stripPref(norm(s), PRE_TINH));
     const PRE_HUYEN = ["huyen", "quan", "thi xa", "thanh pho"];
     const PRE_XA = ["xa", "phuong", "thi tran"];
     function stripPref(s, prefixes) {
       for (const p of [...prefixes].sort((a, b) => b.length - a.length)) if (s.startsWith(p + " ")) return s.slice(p.length + 1);
       return s;
     }
+    // Khoá so khớp tỉnh: bỏ dấu, bỏ tiền tố, bỏ khoảng trắng/gạch -> "Bà Rịa - Vũng Tàu" = "Bà Rịa-Vũng Tàu", "Thành phố Hồ Chí Minh" = "TP Hồ Chí Minh"
+    const tinhKey = (s) => nospace(stripPref(norm(s), PRE_TINH));
 
     function getDmhc() {
       if (dmhc) return dmhc;
       const lines = String(opts.dmhcCsv).replace(/^﻿/, "").split(/\r?\n/).slice(1);
       const byTinh = new Map(); // tên tỉnh chuẩn -> [{xa, huyen, ...}]
-      const tinhIndex = new Map(); // tỉnh chuẩn hoá -> tên tỉnh chuẩn
+      const tinhIndex = new Map(); // khoá tỉnh -> tên tỉnh chuẩn
       for (const line of lines) {
         const [xa, huyen, tinh] = line.split(",").map((s) => (s || "").trim());
         if (!xa || !huyen || !tinh) continue;
@@ -496,12 +623,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
 
     // Chỉ trả về giá trị khi khớp CHÍNH XÁC với DMHC (sau khi bỏ dấu/khoảng trắng/tiền tố).
-    function matchAddress(khuVuc, tinhHd, xaRaw) {
+    // src có dạng "Tỉnh - Huyện" hoặc chỉ "Tỉnh".
+    function matchAddress(src, xaRaw) {
       const D = getDmhc();
-      // "Khu vực giao hàng" dạng "Tỉnh - Huyện"; tên tỉnh có thể chứa " - " (Bà Rịa - Vũng Tàu)
-      // nên thử cả chuỗi trước, rồi lần lượt từng vị trí " - " cho tới khi phần bên trái khớp 1 tỉnh.
+      // Tên tỉnh có thể chứa " - " (Bà Rịa - Vũng Tàu) nên thử cả chuỗi trước,
+      // rồi lần lượt từng vị trí " - " cho tới khi phần bên trái khớp 1 tỉnh.
       let tinh = null, rawHuyen = null;
-      const src = !isEmpty(khuVuc) ? String(khuVuc).trim() : !isEmpty(tinhHd) ? String(tinhHd).trim() : null;
       if (src) {
         tinh = D.tinhIndex.get(tinhKey(src)) || null;
         let k = src.indexOf(" - ");
@@ -538,28 +665,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return s || null;
     }
 
-    async function convertCustomers(input) {
-      const h = input.headers;
-      const cols = {
-        ten: findCol(h, ["Tên khách hàng"]),
-        sdt: findCol(h, ["Điện thoại", "SĐT", "Số điện thoại"]),
-        diaChi: findCol(h, ["Địa chỉ"]),
-        khuVuc: findCol(h, ["Khu vực giao hàng"]),
-        xa: findCol(h, ["Phường/Xã", "Phường xã"]),
-        gioiTinh: findCol(h, ["Giới tính"]),
-        email: findCol(h, ["Email"]),
-        ghiChu: findCol(h, ["Ghi chú"]),
-        no: findCol(h, ["Nợ cần thu hiện tại", "Nợ hiện tại"]),
-        tinhHd: findCol(h, ["Tỉnh/Thành phố (xuất HĐ)"]),
-      };
-      const missing = [["ten", "Tên khách hàng"], ["sdt", "Điện thoại"]].filter(([k]) => !cols[k]).map(([, n]) => n);
-      if (missing.length) throw new Error("File thiếu cột bắt buộc: " + missing.join(", ") + ". Hãy xuất lại file “Danh sách khách hàng” từ KiotViet.");
-      const g = (r, k) => (cols[k] ? val(r[cols[k]]) : null);
+    const GENDER = { nam: "male", male: "male", nu: "female", female: "female" };
+
+    async function convertCustomers(input, m) {
+      checkRequired("customer", m);
+      const g = (r, k) => (m[k] ? val(r[m[k]]) : null);
 
       // SĐT dùng chung cho cả 2 file; thiếu SĐT -> 0900000001, 0900000002... theo thứ tự dòng
       let seq = 0;
       const phones = input.rows.map((r) => {
-        const p = cleanPhone(r[cols.sdt]);
+        const p = cleanPhone(r[m.sdt]);
         if (p) return p;
         seq += 1;
         return "09" + String(seq).padStart(8, "0");
@@ -575,22 +690,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const i = idx + 2;
         const ten = g(r, "ten");
         const xaRaw = g(r, "xa");
-        const khuVuc = g(r, "khuVuc");
-        const tinhHd = g(r, "tinhHd");
-        const [tinh, huyen, xa] = matchAddress(khuVuc, tinhHd, xaRaw);
+        // Nguồn tỉnh/huyện: Khu vực giao hàng -> cột Tỉnh + Huyện riêng -> Tỉnh xuất HĐ
+        const khuVuc = g(r, "khuVuc"), tinhCol = g(r, "tinh"), huyenCol = g(r, "huyen"), tinhHd = g(r, "tinhHd");
+        let src = null;
+        if (khuVuc) src = String(khuVuc).trim();
+        else if (tinhCol) src = String(tinhCol).trim() + (huyenCol ? " - " + String(huyenCol).trim() : "");
+        else if (tinhHd) src = String(tinhHd).trim();
+        const [tinh, huyen, xa] = matchAddress(src, xaRaw);
 
         const miss = [];
-        if (!tinh && (khuVuc || tinhHd)) miss.push("Tỉnh");
-        if (tinh && !huyen && khuVuc && String(khuVuc).includes(" - ")) miss.push("Huyện");
+        if (!tinh && src) miss.push("Tỉnh");
+        if (tinh && !huyen && src && src.includes(" - ")) miss.push("Huyện");
         if (tinh && !xa && xaRaw) miss.push("Xã");
-        if (miss.length) unmatched.push([ten, [khuVuc || tinhHd, xaRaw].filter(Boolean).join(" / "), miss.join(", ")]);
+        if (miss.length) unmatched.push([ten, [src, xaRaw].filter(Boolean).join(" / "), miss.join(", ")]);
 
         const addr = [g(r, "diaChi"), xaRaw].filter((x) => !isEmpty(x)).map((x) => String(x).trim()).join(", ") || null;
         let note = g(r, "ghiChu");
         note = note === null ? null : String(note).trim();
         if (note && note.length > 255) { note = note.slice(0, 255); notesCut++; }
         const gt = g(r, "gioiTinh");
-        const gender = gt === null ? null : ({ "Nam": "male", "Nữ": "female" }[String(gt).trim()] || null);
+        const gender = gt === null ? null : GENDER[key(gt)] || null;
         const email = g(r, "email");
 
         put(ws, i, 2, ten);
@@ -612,13 +731,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       const warnings = [];
 
       let debtRows = 0, zeroSkipped = 0, debtTotal = 0;
-      if (cols.no) {
+      if (m.no) {
         const wb2 = await loadTemplate(T.congNo);
         const ws2 = wb2.worksheets[0];
         clearRows(ws2, 2, 3);
         let i = 2;
         input.rows.forEach((r, idx) => {
-          const n = num(r[cols.no]) || 0;
+          const n = num(r[m.no]) || 0;
           if (n === 0) { zeroSkipped++; return; }
           put(ws2, i, 1, phones[idx], true);
           put(ws2, i, 3, n);
@@ -629,7 +748,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         files.push({ kind: "cong_no", label: "Công nợ", name: "Cong_no_khach_hang_Sapo", buffer: await toBuffer(wb2), rows: debtRows });
         checks.push({ ok: true, text: `Công nợ: ${debtRows} dòng, đã bỏ ${zeroSkipped} dòng nợ = 0` });
       } else {
-        warnings.push("File không có cột “Nợ cần thu hiện tại” nên không tạo file công nợ.");
+        warnings.push("Không có cột công nợ nên không tạo file công nợ.");
       }
       checks.push({ ok: unmatched.length === 0, text: unmatched.length ? `${unmatched.length} khách chưa khớp đủ Tỉnh/Huyện/Xã theo danh mục Sapo (để trống, không đoán)` : "Toàn bộ địa chỉ khớp danh mục hành chính Sapo" });
       if (notesCut) warnings.push(`${notesCut} ghi chú dài hơn 255 ký tự đã được cắt bớt.`);
@@ -641,24 +760,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         stats: { total: input.rows.length, fakePhones: seq, debtRows, zeroSkipped, debtTotal, unmatched: unmatched.length },
         checks,
         warnings,
-        issues: unmatched.length ? [{ title: "Địa chỉ chưa khớp danh mục Sapo", columns: ["Khách hàng", "Khu vực / Phường xã (KiotViet)", "Thiếu"], rows: unmatched }] : [],
+        issues: unmatched.length ? [{ title: "Địa chỉ chưa khớp danh mục Sapo", columns: ["Khách hàng", "Khu vực / Phường xã (file gốc)", "Thiếu"], rows: unmatched }] : [],
       };
     }
 
-    async function convert(buf) {
-      const input = readInput(buf);
-      if (!input.rows.length) throw new Error("File không có dòng dữ liệu nào.");
-      const type = detect(input.headers);
-      if (type === "product") return convertProducts(input);
-      if (type === "customer") return convertCustomers(input);
-      throw new Error("Không nhận ra loại file. Cần file “Danh sách hàng hóa” (có cột Mã hàng, Tên hàng) hoặc “Danh sách khách hàng” (có cột Tên khách hàng) xuất từ KiotViet.");
+    async function run(input, type, mapping) {
+      if (!input.rows.length) throw new Error("File không có dòng dữ liệu nào bên dưới dòng tiêu đề.");
+      if (type === "product") return convertProducts(input, mapping);
+      if (type === "customer") return convertCustomers(input, mapping);
+      throw new Error("Loại file không hợp lệ.");
     }
 
-    return { convert, readInput, detect, slugify, matchAddress };
+    // Dùng cho test: tự nhận + chuyển luôn, báo lỗi nếu không nhận ra
+    async function convert(buf) {
+      const a = analyze(buf);
+      if (!a.recognized) throw new Error("Không nhận ra loại file. Cần chọn cột bằng tay.");
+      return run(a.input, a.type, a.mapping);
+    }
+
+    return { analyze, run, convert, readInput, signature, slugify, matchAddress, SCHEMAS };
   }
 
-  if (typeof module !== "undefined" && module.exports) module.exports = { createConverter };
-  else root.KiotConverter = { createConverter };
+  const api = { createConverter, SCHEMAS };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.KiotConverter = api;
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
@@ -700,37 +825,157 @@ const ASSETS = {"donLe":"UEsDBBQABgAIAAAAIQDiq7yQmQEAAKIGAAATAAgCW0NvbnRlbnRfVHl
     for (const f of files) await runOne(f);
   }
 
+  // ---------- Nhớ cách ghép cột theo "kiểu file" (bộ tên cột) ----------
+  const hash = (t) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; return h.toString(36); };
+  const mapKey = (sig) => "kiot2sapo.map." + hash(sig);
+  function loadSaved(a) {
+    try {
+      const v = JSON.parse(localStorage.getItem(mapKey(a.signature)) || "null");
+      if (!v || !SCHEMAS[v.type]) return null;
+      // Bỏ qua nếu cột đã lưu không còn trong file
+      const cols = new Set(a.input.headers);
+      for (const c of Object.values(v.mapping)) if (c && !cols.has(c)) return null;
+      return v;
+    } catch (e) { return null; }
+  }
+  function storeSaved(a, type, mapping) {
+    try { localStorage.setItem(mapKey(a.signature), JSON.stringify({ type, mapping })); } catch (e) {}
+  }
+  function forgetSaved(a) {
+    try { localStorage.removeItem(mapKey(a.signature)); } catch (e) {}
+  }
+
+  const SCHEMAS = KiotConverter.SCHEMAS;
+  const headHtml = (file, title, pill, sub) => `<div class="job-head"><div><h2>${title}</h2><div class="src">${esc(file.name)}</div>${sub ? `<div class="muted" style="font-size:13.5px;margin-top:4px">${sub}</div>` : ""}</div>${pill}</div>`;
+  function showError(card, file, err) {
+    card.innerHTML = headHtml(file, "Chưa chuyển được", `<span class="pill bad">Lỗi</span>`) + `<div class="job-body"><p class="err">${esc(err.message || err)}</p></div>`;
+  }
+
   async function runOne(file) {
     const card = document.createElement("article");
     card.className = "job";
-    card.innerHTML = `<div class="job-head"><div><h2>Đang đọc file…</h2><div class="src">${esc(file.name)}</div></div><span class="pill run">Đang xử lý</span></div>`;
+    card.innerHTML = headHtml(file, "Đang đọc file…", `<span class="pill run">Đang xử lý</span>`);
     results.prepend(card);
     await wait(30); // để giao diện kịp hiện trạng thái trước khi xử lý file lớn
 
-    const base = file.name.replace(/\.(xlsx|xls)$/i, "");
-    let res;
+    let a;
     try {
-      res = await conv.convert(new Uint8Array(await file.arrayBuffer()));
-    } catch (err) {
-      card.innerHTML = `<div class="job-head"><div><h2>Chưa chuyển được</h2><div class="src">${esc(file.name)}</div></div><span class="pill bad">Lỗi</span></div><div class="job-body"><p class="err">${esc(err.message || err)}</p></div>`;
-      return;
-    }
+      a = conv.analyze(new Uint8Array(await file.arrayBuffer()));
+      if (!a.input.headers.length || !a.input.rows.length) throw new Error("File không có dữ liệu.");
+    } catch (err) { showError(card, file, err); return; }
 
+    const saved = loadSaved(a);
+    if (saved) return convertAndShow(card, file, a, saved.type, saved.mapping, "Dùng cách ghép cột đã lưu cho kiểu file này");
+    if (!a.needsReview) return convertAndShow(card, file, a, a.type, a.mapping, null);
+    showMapper(card, file, a, a.type, a.mapping, a.status);
+  }
+
+  // ---------- Màn hình ghép cột ----------
+  function sampleOf(a, col) {
+    if (!col) return "";
+    for (const r of a.input.rows.slice(0, 200)) {
+      const v = r[col];
+      if (v !== null && v !== undefined && String(v).trim() !== "") { const t = String(v); return t.length > 42 ? t.slice(0, 42) + "…" : t; }
+    }
+    return "(cột trống)";
+  }
+
+  function showMapper(card, file, a, type, mapping, status) {
+    mapping = { ...mapping };
+    status = status || {};
+    const schema = SCHEMAS[type];
+    const opts = (sel) => `<option value="">— Không có —</option>` + a.input.headers.map((h) => `<option value="${esc(h)}"${h === sel ? " selected" : ""}>${esc(h)}</option>`).join("");
+    const chip = (f) => {
+      if (f.required && !mapping[f.id]) return `<span class="pill bad">Bắt buộc</span>`;
+      if (!mapping[f.id]) return "";
+      if (status[f.id] === "exact") return `<span class="pill ok">Tự nhận</span>`;
+      if (status[f.id] === "guess") return `<span class="pill warn">Đoán, xem lại</span>`;
+      return `<span class="pill run">Bạn chọn</span>`;
+    };
+    const intro = a.recognized
+      ? "Ứng dụng đã ghép sẵn các cột bên dưới. Kiểm tra những dòng “Đoán” hoặc còn trống rồi bấm Chuyển đổi."
+      : "Ứng dụng chưa nhận ra đủ cột của file này. Chọn cột tương ứng cho từng mục, ít nhất các mục bắt buộc.";
+
+    card.innerHTML = headHtml(file, "Ghép cột với mẫu Sapo", `<span class="pill warn">Cần bạn xác nhận</span>`,
+      `Dòng tiêu đề: dòng <span class="num">${a.input.headerRow}</span> · <span class="num">${fmt(a.input.rows.length)}</span> dòng dữ liệu`) + `
+      <div class="job-body">
+        <p style="margin:0">${intro}</p>
+        <div class="seg" role="radiogroup" aria-label="Loại dữ liệu">
+          ${Object.entries(SCHEMAS).map(([t, sc]) => `<button type="button" role="radio" aria-checked="${t === type}" data-type="${t}">${esc(sc.label)}</button>`).join("")}
+        </div>
+        <div class="tablewrap map">
+          <table>
+            <thead><tr><th>Cột Sapo</th><th>Cột trong file của bạn</th><th>Ví dụ dữ liệu</th></tr></thead>
+            <tbody>${schema.fields.map((f) => `
+              <tr data-f="${f.id}">
+                <td><div class="fname">${esc(f.label)}${f.required ? ` <span class="req">*</span>` : ""}</div>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ""}</td>
+                <td><div class="pick"><select id="map-${f.id}" aria-label="${esc(f.label)}">${opts(mapping[f.id])}</select>${chip(f)}</div></td>
+                <td class="sample">${esc(sampleOf(a, mapping[f.id]))}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <label class="remember"><input type="checkbox" id="remember" checked> Nhớ cách ghép cho các file cùng kiểu</label>
+          <div class="btns"><button type="button" class="btn ghost" data-act="cancel">Bỏ file này</button><button type="button" class="btn" data-act="go">Chuyển đổi</button></div>
+        </div>
+        <p class="err" data-err hidden></p>
+      </div>`;
+
+    const go = card.querySelector('[data-act="go"]');
+    const refreshGo = () => {
+      const miss = schema.fields.filter((f) => f.required && !mapping[f.id]);
+      go.disabled = miss.length > 0;
+      go.title = miss.length ? "Chưa chọn: " + miss.map((f) => f.label).join(", ") : "";
+    };
+    refreshGo();
+
+    card.querySelectorAll("tr[data-f]").forEach((tr) => {
+      const id = tr.dataset.f;
+      const f = schema.fields.find((x) => x.id === id);
+      tr.querySelector("select").addEventListener("change", (e) => {
+        mapping[id] = e.target.value || undefined;
+        if (!mapping[id]) delete mapping[id];
+        status[id] = "manual";
+        tr.querySelector(".sample").textContent = sampleOf(a, mapping[id]);
+        const old = tr.querySelector(".pick .pill"); if (old) old.remove();
+        tr.querySelector(".pick").insertAdjacentHTML("beforeend", chip(f));
+        refreshGo();
+      });
+    });
+    card.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+      const t = b.dataset.type;
+      if (t === type) return;
+      const c = a.candidates[t];
+      showMapper(card, file, a, t, c.mapping, c.status);
+    }));
+    card.querySelector('[data-act="cancel"]').addEventListener("click", () => card.remove());
+    go.addEventListener("click", () => {
+      if (card.querySelector("#remember").checked) storeSaved(a, type, mapping); else forgetSaved(a);
+      convertAndShow(card, file, a, type, mapping, null);
+    });
+  }
+
+  // ---------- Chuyển đổi + hiện kết quả ----------
+  async function convertAndShow(card, file, a, type, mapping, note) {
+    card.innerHTML = headHtml(file, "Đang tạo file Sapo…", `<span class="pill run">Đang xử lý</span>`);
+    await wait(30);
+    let res;
+    try { res = await conv.run(a.input, type, mapping); }
+    catch (err) { showError(card, file, err); return; }
+
+    const base = file.name.replace(/\.(xlsx|xls)$/i, "");
     const outs = res.files.map((f) => ({ ...f, filename: `${f.name} (${base}).xlsx` }));
     const hasBad = res.checks.some((c) => !c.ok);
     const hasWarn = res.warnings.length > 0;
     const pill = hasBad ? `<span class="pill warn">Cần xem lại</span>` : hasWarn ? `<span class="pill ok">Xong · có ghi chú</span>` : `<span class="pill ok">Xong</span>`;
-    const title = res.type === "product" ? "Danh sách hàng hóa" : "Danh sách khách hàng";
     const s = res.stats;
     const summary = res.type === "product"
       ? `<span class="num">${fmt(s.total)}</span> dòng · giá lấy từ cột “${esc(s.priceCol || "không có")}”`
       : `<span class="num">${fmt(s.total)}</span> khách · tổng nợ <span class="num">${fmt(Math.round(s.debtTotal))}</span> đ`;
+    const mapped = SCHEMAS[type].fields.filter((f) => mapping[f.id]);
 
-    card.innerHTML = `
-      <div class="job-head">
-        <div><h2>${title}</h2><div class="src">${esc(file.name)}</div><div class="muted" style="font-size:13.5px;margin-top:4px">${summary}</div></div>
-        ${pill}
-      </div>
+    card.innerHTML = headHtml(file, SCHEMAS[type].label, pill, summary) + `
       <div class="job-body">
         <div class="files">${outs.map((o, i) => `
           <div class="file">
@@ -739,6 +984,7 @@ const ASSETS = {"donLe":"UEsDBBQABgAIAAAAIQDiq7yQmQEAAKIGAAATAAgCW0NvbnRlbnRfVHl
           </div>`).join("")}
         </div>
         <ul class="checks">
+          ${note ? `<li><span class="mark ok">↺</span><span>${esc(note)}</span></li>` : ""}
           ${res.checks.map((c) => `<li><span class="mark ${c.ok ? "ok" : "warn"}">${c.ok ? "✓" : "!"}</span><span>${esc(c.text)}</span></li>`).join("")}
           ${res.warnings.map((w) => `<li><span class="mark warn">i</span><span>${esc(w)}</span></li>`).join("")}
         </ul>
@@ -751,9 +997,22 @@ const ASSETS = {"donLe":"UEsDBBQABgAIAAAAIQDiq7yQmQEAAKIGAAATAAgCW0NvbnRlbnRfVHl
             </table></div>
             ${is.rows.length > 500 ? `<p class="muted" style="margin:8px 12px">Hiện 500 dòng đầu.</p>` : ""}
           </details>`).join("")}
+        <details>
+          <summary>Cột đã dùng (${mapped.length})</summary>
+          <div class="tablewrap"><table>
+            <thead><tr><th>Cột Sapo</th><th>Lấy từ cột</th></tr></thead>
+            <tbody>${mapped.map((f) => `<tr><td>${esc(f.label)}</td><td>${esc(mapping[f.id])}</td></tr>`).join("")}</tbody>
+          </table></div>
+        </details>
+        <div><button type="button" class="btn ghost" data-act="remap">Sửa cách ghép cột</button></div>
       </div>`;
 
     card.querySelectorAll("button[data-i]").forEach((b) => b.addEventListener("click", () => { const o = outs[+b.dataset.i]; save(o.buffer, o.filename); }));
+    card.querySelector('[data-act="remap"]').addEventListener("click", () => {
+      const st = {};
+      for (const k in mapping) st[k] = a.status[k] === "exact" && a.mapping[k] === mapping[k] ? "exact" : "manual";
+      showMapper(card, file, a, type, mapping, st);
+    });
 
     if (auto.checked) {
       for (const o of outs) { save(o.buffer, o.filename); await wait(600); }

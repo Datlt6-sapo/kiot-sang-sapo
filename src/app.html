@@ -98,6 +98,24 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{text-align:left;padding:7px 12px;border-bottom:1px solid var(--line);vertical-align:top}
 th{position:sticky;top:0;background:var(--surface);font-weight:600;color:var(--muted);font-size:12px}
 .err{color:var(--bad);margin:0}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:10px;background:var(--sunk);justify-self:start}
+.seg button{font:600 13.5px var(--sans);border:0;border-radius:7px;padding:7px 14px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-checked="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tablewrap.map{max-height:none;border:1px solid var(--line);border-radius:10px}
+.map td{vertical-align:middle}
+.fname{font-weight:600;font-size:13.5px}
+.req{color:var(--bad)}
+.hint{font-size:12px;color:var(--muted)}
+.pick{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pick select{font:14px var(--sans);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;max-width:230px}
+.pick select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sample{font:12.5px var(--mono);color:var(--muted);max-width:220px;word-break:break-word}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.remember{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
+.remember input{accent-color:var(--accent);width:16px;height:16px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
 .steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px;color:var(--muted)}
 .steps b{color:var(--ink);font-weight:600}
 footer{font-size:13px;color:var(--muted)}
@@ -109,13 +127,13 @@ footer{font-size:13px;color:var(--muted)}
   <header>
     <div class="route"><span class="chip">KiotViet</span><span aria-hidden="true">→</span><span class="chip to">Sapo</span></div>
     <h1>Kiot sang Sapo</h1>
-    <p>Thả file “Danh sách hàng hóa” hoặc “Danh sách khách hàng” xuất từ KiotViet. Ứng dụng tự nhận loại file, điền vào đúng file mẫu nhập của Sapo và tải về máy. Dữ liệu chỉ xử lý trên máy bạn, không gửi đi đâu.</p>
+    <p>Thả file “Danh sách hàng hóa” hoặc “Danh sách khách hàng” xuất từ KiotViet, hoặc file Excel từ phần mềm khác. Ứng dụng tự nhận loại file và cột, điền vào đúng file mẫu nhập của Sapo rồi tải về máy. Cột nào chưa chắc, ứng dụng hỏi bạn một lần rồi nhớ cho lần sau. Dữ liệu chỉ xử lý trên máy bạn, không gửi đi đâu.</p>
   </header>
 
   <section style="display:grid;gap:10px">
     <div class="drop" id="drop">
-      <input type="file" id="file" accept=".xlsx,.xls" multiple aria-label="Chọn file KiotViet">
-      <strong>Kéo thả file KiotViet vào đây</strong>
+      <input type="file" id="file" accept=".xlsx,.xls" multiple aria-label="Chọn file cần chuyển">
+      <strong>Kéo thả file vào đây</strong>
       <span class="muted">.xlsx hoặc .xls · chọn được nhiều file một lúc</span>
       <span class="btn">Chọn file</span>
     </div>
@@ -201,37 +219,157 @@ const ASSETS = /*__ASSETS__*/;
     for (const f of files) await runOne(f);
   }
 
+  // ---------- Nhớ cách ghép cột theo "kiểu file" (bộ tên cột) ----------
+  const hash = (t) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; return h.toString(36); };
+  const mapKey = (sig) => "kiot2sapo.map." + hash(sig);
+  function loadSaved(a) {
+    try {
+      const v = JSON.parse(localStorage.getItem(mapKey(a.signature)) || "null");
+      if (!v || !SCHEMAS[v.type]) return null;
+      // Bỏ qua nếu cột đã lưu không còn trong file
+      const cols = new Set(a.input.headers);
+      for (const c of Object.values(v.mapping)) if (c && !cols.has(c)) return null;
+      return v;
+    } catch (e) { return null; }
+  }
+  function storeSaved(a, type, mapping) {
+    try { localStorage.setItem(mapKey(a.signature), JSON.stringify({ type, mapping })); } catch (e) {}
+  }
+  function forgetSaved(a) {
+    try { localStorage.removeItem(mapKey(a.signature)); } catch (e) {}
+  }
+
+  const SCHEMAS = KiotConverter.SCHEMAS;
+  const headHtml = (file, title, pill, sub) => `<div class="job-head"><div><h2>${title}</h2><div class="src">${esc(file.name)}</div>${sub ? `<div class="muted" style="font-size:13.5px;margin-top:4px">${sub}</div>` : ""}</div>${pill}</div>`;
+  function showError(card, file, err) {
+    card.innerHTML = headHtml(file, "Chưa chuyển được", `<span class="pill bad">Lỗi</span>`) + `<div class="job-body"><p class="err">${esc(err.message || err)}</p></div>`;
+  }
+
   async function runOne(file) {
     const card = document.createElement("article");
     card.className = "job";
-    card.innerHTML = `<div class="job-head"><div><h2>Đang đọc file…</h2><div class="src">${esc(file.name)}</div></div><span class="pill run">Đang xử lý</span></div>`;
+    card.innerHTML = headHtml(file, "Đang đọc file…", `<span class="pill run">Đang xử lý</span>`);
     results.prepend(card);
     await wait(30); // để giao diện kịp hiện trạng thái trước khi xử lý file lớn
 
-    const base = file.name.replace(/\.(xlsx|xls)$/i, "");
-    let res;
+    let a;
     try {
-      res = await conv.convert(new Uint8Array(await file.arrayBuffer()));
-    } catch (err) {
-      card.innerHTML = `<div class="job-head"><div><h2>Chưa chuyển được</h2><div class="src">${esc(file.name)}</div></div><span class="pill bad">Lỗi</span></div><div class="job-body"><p class="err">${esc(err.message || err)}</p></div>`;
-      return;
-    }
+      a = conv.analyze(new Uint8Array(await file.arrayBuffer()));
+      if (!a.input.headers.length || !a.input.rows.length) throw new Error("File không có dữ liệu.");
+    } catch (err) { showError(card, file, err); return; }
 
+    const saved = loadSaved(a);
+    if (saved) return convertAndShow(card, file, a, saved.type, saved.mapping, "Dùng cách ghép cột đã lưu cho kiểu file này");
+    if (!a.needsReview) return convertAndShow(card, file, a, a.type, a.mapping, null);
+    showMapper(card, file, a, a.type, a.mapping, a.status);
+  }
+
+  // ---------- Màn hình ghép cột ----------
+  function sampleOf(a, col) {
+    if (!col) return "";
+    for (const r of a.input.rows.slice(0, 200)) {
+      const v = r[col];
+      if (v !== null && v !== undefined && String(v).trim() !== "") { const t = String(v); return t.length > 42 ? t.slice(0, 42) + "…" : t; }
+    }
+    return "(cột trống)";
+  }
+
+  function showMapper(card, file, a, type, mapping, status) {
+    mapping = { ...mapping };
+    status = status || {};
+    const schema = SCHEMAS[type];
+    const opts = (sel) => `<option value="">— Không có —</option>` + a.input.headers.map((h) => `<option value="${esc(h)}"${h === sel ? " selected" : ""}>${esc(h)}</option>`).join("");
+    const chip = (f) => {
+      if (f.required && !mapping[f.id]) return `<span class="pill bad">Bắt buộc</span>`;
+      if (!mapping[f.id]) return "";
+      if (status[f.id] === "exact") return `<span class="pill ok">Tự nhận</span>`;
+      if (status[f.id] === "guess") return `<span class="pill warn">Đoán, xem lại</span>`;
+      return `<span class="pill run">Bạn chọn</span>`;
+    };
+    const intro = a.recognized
+      ? "Ứng dụng đã ghép sẵn các cột bên dưới. Kiểm tra những dòng “Đoán” hoặc còn trống rồi bấm Chuyển đổi."
+      : "Ứng dụng chưa nhận ra đủ cột của file này. Chọn cột tương ứng cho từng mục, ít nhất các mục bắt buộc.";
+
+    card.innerHTML = headHtml(file, "Ghép cột với mẫu Sapo", `<span class="pill warn">Cần bạn xác nhận</span>`,
+      `Dòng tiêu đề: dòng <span class="num">${a.input.headerRow}</span> · <span class="num">${fmt(a.input.rows.length)}</span> dòng dữ liệu`) + `
+      <div class="job-body">
+        <p style="margin:0">${intro}</p>
+        <div class="seg" role="radiogroup" aria-label="Loại dữ liệu">
+          ${Object.entries(SCHEMAS).map(([t, sc]) => `<button type="button" role="radio" aria-checked="${t === type}" data-type="${t}">${esc(sc.label)}</button>`).join("")}
+        </div>
+        <div class="tablewrap map">
+          <table>
+            <thead><tr><th>Cột Sapo</th><th>Cột trong file của bạn</th><th>Ví dụ dữ liệu</th></tr></thead>
+            <tbody>${schema.fields.map((f) => `
+              <tr data-f="${f.id}">
+                <td><div class="fname">${esc(f.label)}${f.required ? ` <span class="req">*</span>` : ""}</div>${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ""}</td>
+                <td><div class="pick"><select id="map-${f.id}" aria-label="${esc(f.label)}">${opts(mapping[f.id])}</select>${chip(f)}</div></td>
+                <td class="sample">${esc(sampleOf(a, mapping[f.id]))}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <label class="remember"><input type="checkbox" id="remember" checked> Nhớ cách ghép cho các file cùng kiểu</label>
+          <div class="btns"><button type="button" class="btn ghost" data-act="cancel">Bỏ file này</button><button type="button" class="btn" data-act="go">Chuyển đổi</button></div>
+        </div>
+        <p class="err" data-err hidden></p>
+      </div>`;
+
+    const go = card.querySelector('[data-act="go"]');
+    const refreshGo = () => {
+      const miss = schema.fields.filter((f) => f.required && !mapping[f.id]);
+      go.disabled = miss.length > 0;
+      go.title = miss.length ? "Chưa chọn: " + miss.map((f) => f.label).join(", ") : "";
+    };
+    refreshGo();
+
+    card.querySelectorAll("tr[data-f]").forEach((tr) => {
+      const id = tr.dataset.f;
+      const f = schema.fields.find((x) => x.id === id);
+      tr.querySelector("select").addEventListener("change", (e) => {
+        mapping[id] = e.target.value || undefined;
+        if (!mapping[id]) delete mapping[id];
+        status[id] = "manual";
+        tr.querySelector(".sample").textContent = sampleOf(a, mapping[id]);
+        const old = tr.querySelector(".pick .pill"); if (old) old.remove();
+        tr.querySelector(".pick").insertAdjacentHTML("beforeend", chip(f));
+        refreshGo();
+      });
+    });
+    card.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+      const t = b.dataset.type;
+      if (t === type) return;
+      const c = a.candidates[t];
+      showMapper(card, file, a, t, c.mapping, c.status);
+    }));
+    card.querySelector('[data-act="cancel"]').addEventListener("click", () => card.remove());
+    go.addEventListener("click", () => {
+      if (card.querySelector("#remember").checked) storeSaved(a, type, mapping); else forgetSaved(a);
+      convertAndShow(card, file, a, type, mapping, null);
+    });
+  }
+
+  // ---------- Chuyển đổi + hiện kết quả ----------
+  async function convertAndShow(card, file, a, type, mapping, note) {
+    card.innerHTML = headHtml(file, "Đang tạo file Sapo…", `<span class="pill run">Đang xử lý</span>`);
+    await wait(30);
+    let res;
+    try { res = await conv.run(a.input, type, mapping); }
+    catch (err) { showError(card, file, err); return; }
+
+    const base = file.name.replace(/\.(xlsx|xls)$/i, "");
     const outs = res.files.map((f) => ({ ...f, filename: `${f.name} (${base}).xlsx` }));
     const hasBad = res.checks.some((c) => !c.ok);
     const hasWarn = res.warnings.length > 0;
     const pill = hasBad ? `<span class="pill warn">Cần xem lại</span>` : hasWarn ? `<span class="pill ok">Xong · có ghi chú</span>` : `<span class="pill ok">Xong</span>`;
-    const title = res.type === "product" ? "Danh sách hàng hóa" : "Danh sách khách hàng";
     const s = res.stats;
     const summary = res.type === "product"
       ? `<span class="num">${fmt(s.total)}</span> dòng · giá lấy từ cột “${esc(s.priceCol || "không có")}”`
       : `<span class="num">${fmt(s.total)}</span> khách · tổng nợ <span class="num">${fmt(Math.round(s.debtTotal))}</span> đ`;
+    const mapped = SCHEMAS[type].fields.filter((f) => mapping[f.id]);
 
-    card.innerHTML = `
-      <div class="job-head">
-        <div><h2>${title}</h2><div class="src">${esc(file.name)}</div><div class="muted" style="font-size:13.5px;margin-top:4px">${summary}</div></div>
-        ${pill}
-      </div>
+    card.innerHTML = headHtml(file, SCHEMAS[type].label, pill, summary) + `
       <div class="job-body">
         <div class="files">${outs.map((o, i) => `
           <div class="file">
@@ -240,6 +378,7 @@ const ASSETS = /*__ASSETS__*/;
           </div>`).join("")}
         </div>
         <ul class="checks">
+          ${note ? `<li><span class="mark ok">↺</span><span>${esc(note)}</span></li>` : ""}
           ${res.checks.map((c) => `<li><span class="mark ${c.ok ? "ok" : "warn"}">${c.ok ? "✓" : "!"}</span><span>${esc(c.text)}</span></li>`).join("")}
           ${res.warnings.map((w) => `<li><span class="mark warn">i</span><span>${esc(w)}</span></li>`).join("")}
         </ul>
@@ -252,9 +391,22 @@ const ASSETS = /*__ASSETS__*/;
             </table></div>
             ${is.rows.length > 500 ? `<p class="muted" style="margin:8px 12px">Hiện 500 dòng đầu.</p>` : ""}
           </details>`).join("")}
+        <details>
+          <summary>Cột đã dùng (${mapped.length})</summary>
+          <div class="tablewrap"><table>
+            <thead><tr><th>Cột Sapo</th><th>Lấy từ cột</th></tr></thead>
+            <tbody>${mapped.map((f) => `<tr><td>${esc(f.label)}</td><td>${esc(mapping[f.id])}</td></tr>`).join("")}</tbody>
+          </table></div>
+        </details>
+        <div><button type="button" class="btn ghost" data-act="remap">Sửa cách ghép cột</button></div>
       </div>`;
 
     card.querySelectorAll("button[data-i]").forEach((b) => b.addEventListener("click", () => { const o = outs[+b.dataset.i]; save(o.buffer, o.filename); }));
+    card.querySelector('[data-act="remap"]').addEventListener("click", () => {
+      const st = {};
+      for (const k in mapping) st[k] = a.status[k] === "exact" && a.mapping[k] === mapping[k] ? "exact" : "manual";
+      showMapper(card, file, a, type, mapping, st);
+    });
 
     if (auto.checked) {
       for (const o of outs) { save(o.buffer, o.filename); await wait(600); }
