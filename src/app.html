@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kiot sang Sapo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#F2F4F3; --surface:#FFFFFF; --sunk:#E8ECEA; --line:#D5DCD8;
+  --ink:#15201B; --muted:#5A6A62; --accent:#0E7552; --accent-ink:#FFFFFF; --accent-soft:#DCEFE6;
+  --ok:#1D7A43; --warn:#9A5B00; --warn-soft:#FBEFD9; --bad:#B3261E; --bad-soft:#FBE3E1;
+  --sans:"Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0F1512; --surface:#161E1A; --sunk:#1D2722; --line:#2A3630;
+    --ink:#E4ECE7; --muted:#95A69D; --accent:#3FBF8A; --accent-ink:#06140E; --accent-soft:#16392A;
+    --ok:#5BCB8A; --warn:#E3A948; --warn-soft:#352812; --bad:#F08A82; --bad-soft:#3A1916;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0F1512; --surface:#161E1A; --sunk:#1D2722; --line:#2A3630;
+  --ink:#E4ECE7; --muted:#95A69D; --accent:#3FBF8A; --accent-ink:#06140E; --accent-soft:#16392A;
+  --ok:#5BCB8A; --warn:#E3A948; --warn-soft:#352812; --bad:#F08A82; --bad-soft:#3A1916;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);padding-inline:16px;padding-block:28px 64px}
+.wrap{max-width:880px;margin:0 auto;display:grid;gap:28px}
+h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:28px;font-weight:700}
+h2{font-size:17px;font-weight:600}
+.num,code,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.label{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+
+header{display:grid;gap:10px}
+.route{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--sunk);color:var(--ink);font-weight:500}
+.chip.to{background:var(--accent-soft);color:var(--accent)}
+header p{margin:0;max-width:62ch;color:var(--muted)}
+
+/* Vùng thả file */
+.drop{position:relative;display:grid;place-items:center;gap:8px;text-align:center;padding:40px 20px;border:1.5px dashed var(--line);border-radius:14px;background:var(--surface);cursor:pointer;transition:border-color .15s, background .15s}
+.drop:hover,.drop:focus-within{border-color:var(--accent)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.drop strong{font-size:17px;font-weight:600}
+.drop .btn{pointer-events:none}
+.opts{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13.5px}
+.opts label{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.opts input{accent-color:var(--accent);width:16px;height:16px}
+
+.btn{display:inline-flex;align-items:center;gap:8px;font:600 14px var(--sans);padding:9px 16px;border-radius:9px;border:1px solid transparent;background:var(--accent);color:var(--accent-ink);cursor:pointer;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn:focus-visible,.drop input:focus-visible+*{outline:2px solid var(--accent);outline-offset:2px}
+.btn:hover{filter:brightness(1.06)}
+
+/* Bảng giải thích output */
+.outputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.out{background:var(--surface);padding:16px 18px;display:grid;gap:6px;align-content:start}
+.out h3{font-size:15px;font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.out h3 small{font:500 11.5px var(--mono);color:var(--muted);white-space:nowrap}
+.out p{margin:0;font-size:13.5px;color:var(--muted)}
+.out code{font-size:12.5px;background:var(--sunk);padding:1px 5px;border-radius:4px;color:var(--ink)}
+@media (max-width:640px){.outputs{grid-template-columns:1fr}}
+
+/* Kết quả */
+#results{display:grid;gap:18px}
+#results:empty{display:none}
+.job{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.job-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--line)}
+.job-head .src{font:500 13px var(--mono);color:var(--muted);word-break:break-all}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--accent-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.run{background:var(--sunk);color:var(--muted)}
+.job-body{padding:16px 18px;display:grid;gap:16px}
+.files{display:grid;gap:8px}
+.file{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border-radius:10px;background:var(--sunk)}
+.file .name{font-weight:600}
+.file .meta{font-size:13px;color:var(--muted)}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:14px}
+.checks li{display:grid;grid-template-columns:18px 1fr;gap:8px;align-items:start}
+.mark{font-weight:700;line-height:1.55}
+.mark.ok{color:var(--ok)} .mark.warn{color:var(--warn)} .mark.bad{color:var(--bad)}
+details{border:1px solid var(--line);border-radius:10px}
+summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:14px}
+.tablewrap{overflow:auto;max-height:340px;border-top:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:7px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--surface);font-weight:600;color:var(--muted);font-size:12px}
+.err{color:var(--bad);margin:0}
+.steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px;color:var(--muted)}
+.steps b{color:var(--ink);font-weight:600}
+footer{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="route"><span class="chip">KiotViet</span><span aria-hidden="true">→</span><span class="chip to">Sapo</span></div>
+    <h1>Kiot sang Sapo</h1>
+    <p>Thả file “Danh sách hàng hóa” hoặc “Danh sách khách hàng” xuất từ KiotViet. Ứng dụng tự nhận loại file, điền vào đúng file mẫu nhập của Sapo và tải về máy. Dữ liệu chỉ xử lý trên máy bạn, không gửi đi đâu.</p>
+  </header>
+
+  <section style="display:grid;gap:10px">
+    <div class="drop" id="drop">
+      <input type="file" id="file" accept=".xlsx,.xls" multiple aria-label="Chọn file KiotViet">
+      <strong>Kéo thả file KiotViet vào đây</strong>
+      <span class="muted">.xlsx hoặc .xls · chọn được nhiều file một lúc</span>
+      <span class="btn">Chọn file</span>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="auto" checked> Tự động tải file Sapo về sau khi chuyển</label>
+      <span class="muted">Trình duyệt có thể hỏi “Cho phép tải nhiều file” lần đầu, hãy chọn Cho phép.</span>
+    </div>
+  </section>
+
+  <section id="results" aria-live="polite"></section>
+
+  <section style="display:grid;gap:12px">
+    <span class="label">File Sapo được tạo</span>
+    <div class="outputs">
+      <div class="out">
+        <h3>Sản phẩm đơn lẻ <small>Quy đổi = 1</small></h3>
+        <p>Mẫu “Mẫu file nhập”. Giá lấy <code>Giá bán sau thuế</code> nếu có, tồn kho vào cột <code>Cửa hàng chính_Tồn kho</code>.</p>
+      </div>
+      <div class="out">
+        <h3>Sản phẩm quy đổi <small>Quy đổi ≠ 1</small></h3>
+        <p>Thùng, lốc, combo… nối về SKU gốc qua <code>Mã ĐVT Cơ bản</code> hoặc <code>Mã HH Liên quan</code>. Alias sinh từ tên sản phẩm gốc.</p>
+      </div>
+      <div class="out">
+        <h3>Khách hàng <small>DMHC 63 tỉnh</small></h3>
+        <p>Tỉnh, Quận/Huyện, Phường/Xã chỉ điền khi khớp chính xác danh mục Sapo. Khách không có SĐT được gán <code>0900000001</code>, <code>0900000002</code>…</p>
+      </div>
+      <div class="out">
+        <h3>Công nợ <small>Nợ ≠ 0</small></h3>
+        <p>Lấy <code>Nợ cần thu hiện tại</code>, giữ dấu âm/dương, bỏ khách có nợ bằng 0. Khớp khách theo cùng SĐT với file khách hàng.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:10px">
+    <span class="label">Thứ tự nhập vào Sapo</span>
+    <ol class="steps">
+      <li><b>Sản phẩm đơn lẻ</b>, rồi mới tới <b>Sản phẩm quy đổi</b> (quy đổi cần sản phẩm gốc có sẵn).</li>
+      <li><b>Khách hàng</b>, rồi mới tới <b>Công nợ</b> (công nợ tìm khách theo SĐT).</li>
+    </ol>
+  </section>
+
+  <footer>Mỗi file sản phẩm là một chi nhánh. Có nhiều chi nhánh thì xuất và chuyển từng file.</footer>
+</div>
+
+<script>/*__LIBS__*/</script>
+<script>/*__CONVERT__*/</script>
+<script>
+const ASSETS = /*__ASSETS__*/;
+</script>
+<script>
+(function(){
+  const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const conv = KiotConverter.createConverter({
+    XLSX, ExcelJS,
+    dmhcCsv: new TextDecoder().decode(b64(ASSETS.dmhc)),
+    templates: { donLe: b64(ASSETS.donLe), quyDoi: b64(ASSETS.quyDoi), khachHang: b64(ASSETS.khachHang), congNo: b64(ASSETS.congNo) },
+  });
+
+  const $ = (s, el) => (el || document).querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const fmt = (n) => Number(n).toLocaleString("vi-VN");
+  const drop = $("#drop"), input = $("#file"), results = $("#results"), auto = $("#auto");
+
+  try { const v = localStorage.getItem("kiot2sapo.auto"); if (v !== null) auto.checked = v === "1"; } catch (e) {}
+  auto.addEventListener("change", () => { try { localStorage.setItem("kiot2sapo.auto", auto.checked ? "1" : "0"); } catch (e) {} });
+
+  const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  function save(buffer, filename) {
+    const url = URL.createObjectURL(new Blob([buffer], { type: XLSX_MIME }));
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); handle([...e.dataTransfer.files]); });
+  input.addEventListener("change", () => { handle([...input.files]); input.value = ""; });
+
+  async function handle(files) {
+    for (const f of files) await runOne(f);
+  }
+
+  async function runOne(file) {
+    const card = document.createElement("article");
+    card.className = "job";
+    card.innerHTML = `<div class="job-head"><div><h2>Đang đọc file…</h2><div class="src">${esc(file.name)}</div></div><span class="pill run">Đang xử lý</span></div>`;
+    results.prepend(card);
+    await wait(30); // để giao diện kịp hiện trạng thái trước khi xử lý file lớn
+
+    const base = file.name.replace(/\.(xlsx|xls)$/i, "");
+    let res;
+    try {
+      res = await conv.convert(new Uint8Array(await file.arrayBuffer()));
+    } catch (err) {
+      card.innerHTML = `<div class="job-head"><div><h2>Chưa chuyển được</h2><div class="src">${esc(file.name)}</div></div><span class="pill bad">Lỗi</span></div><div class="job-body"><p class="err">${esc(err.message || err)}</p></div>`;
+      return;
+    }
+
+    const outs = res.files.map((f) => ({ ...f, filename: `${f.name} (${base}).xlsx` }));
+    const hasBad = res.checks.some((c) => !c.ok);
+    const hasWarn = res.warnings.length > 0;
+    const pill = hasBad ? `<span class="pill warn">Cần xem lại</span>` : hasWarn ? `<span class="pill ok">Xong · có ghi chú</span>` : `<span class="pill ok">Xong</span>`;
+    const title = res.type === "product" ? "Danh sách hàng hóa" : "Danh sách khách hàng";
+    const s = res.stats;
+    const summary = res.type === "product"
+      ? `<span class="num">${fmt(s.total)}</span> dòng · giá lấy từ cột “${esc(s.priceCol || "không có")}”`
+      : `<span class="num">${fmt(s.total)}</span> khách · tổng nợ <span class="num">${fmt(Math.round(s.debtTotal))}</span> đ`;
+
+    card.innerHTML = `
+      <div class="job-head">
+        <div><h2>${title}</h2><div class="src">${esc(file.name)}</div><div class="muted" style="font-size:13.5px;margin-top:4px">${summary}</div></div>
+        ${pill}
+      </div>
+      <div class="job-body">
+        <div class="files">${outs.map((o, i) => `
+          <div class="file">
+            <div><div class="name">${esc(o.label)}</div><div class="meta"><span class="num">${fmt(o.rows)}</span> dòng · ${esc(o.filename)}</div></div>
+            <button class="btn ghost" type="button" data-i="${i}">Tải về</button>
+          </div>`).join("")}
+        </div>
+        <ul class="checks">
+          ${res.checks.map((c) => `<li><span class="mark ${c.ok ? "ok" : "warn"}">${c.ok ? "✓" : "!"}</span><span>${esc(c.text)}</span></li>`).join("")}
+          ${res.warnings.map((w) => `<li><span class="mark warn">i</span><span>${esc(w)}</span></li>`).join("")}
+        </ul>
+        ${res.issues.map((is) => `
+          <details>
+            <summary>${esc(is.title)} (${fmt(is.rows.length)})</summary>
+            <div class="tablewrap"><table>
+              <thead><tr>${is.columns.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>
+              <tbody>${is.rows.slice(0, 500).map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody>
+            </table></div>
+            ${is.rows.length > 500 ? `<p class="muted" style="margin:8px 12px">Hiện 500 dòng đầu.</p>` : ""}
+          </details>`).join("")}
+      </div>`;
+
+    card.querySelectorAll("button[data-i]").forEach((b) => b.addEventListener("click", () => { const o = outs[+b.dataset.i]; save(o.buffer, o.filename); }));
+
+    if (auto.checked) {
+      for (const o of outs) { save(o.buffer, o.filename); await wait(600); }
+    }
+  }
+})();
+</script>
+</body>
+</html>
